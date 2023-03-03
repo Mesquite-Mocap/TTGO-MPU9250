@@ -8,13 +8,18 @@
 #include <WebServer.h>
 #include <ESPmDNS.h>
 #include <Update.h>
-#include <WebSocketsClient.h>
+// #include <WebSocketsClient.h>
+#include <BLEDevice.h>
+#include <BLEUtils.h>
+#include <BLEServer.h>
+#include <BLE2902.h>
 
 MPU9250 mpu;
 TFT_eSPI tft = TFT_eSPI(); 
 PCF8563_Class rtc; 
 WiFiManager wifiManager;
-WebSocketsClient webSocket;
+// WebSocketsClient webSocket;
+BLECharacteristic* pCharacteristic;
 
 struct Quat {
     float x;
@@ -44,12 +49,13 @@ uint32_t pressedTime = 0;
 bool charge_indication = false;
 
 uint8_t hh, mm, ss ;
-const char* host = "esp32-1";
+const char* host = "esp32-9";
 const char* ssid = "SETUP-AE05";
 const char* password = "faucet4039dozed";
 String serverIP = "mocap.local";
 String mac_address;
 WebServer server(80);
+
 
 #define TP_PIN_PIN          33
 #define I2C_SDA_PIN         21
@@ -61,6 +67,15 @@ WebServer server(80);
 #define TP_PWR_PIN          25
 #define LED_PIN             4
 #define CHARGE_PIN          32
+
+//maintain compatability with HM-10
+#define BLE_NAME "ESP32" //must match filters name in bluetoothterminal.js- navigator.bluetooth.requestDevice
+// BLEUUID  SERVICE_UUID((uint16_t)0x1802); // UART service UUID
+// BLEUUID CHARACTERISTIC_UUID ((uint16_t)0x1803);
+
+BLEUUID  SERVICE_UUID("6E400001-B5A3-F393-E0A9-E50E24DCCA9E"); // UART service UUID
+BLEUUID CHARACTERISTIC_UUID ("6E400002-B5A3-F393-E0A9-E50E24DCCA9E");
+
 
 /*
 
@@ -228,51 +243,72 @@ const char* serverIndex =
 
 "</script>";
 
-void hexdump(const void *mem, uint32_t len, uint8_t cols = 16) {
-  const uint8_t* src = (const uint8_t*) mem;
-  Serial.printf("\n[HEXDUMP] Address: 0x%08X len: 0x%X (%d)", (ptrdiff_t)src, len, len);
-  for(uint32_t i = 0; i < len; i++) {
-    if(i % cols == 0) {
-      Serial.printf("\n[0x%08X] 0x%08X: ", (ptrdiff_t)src, i);
+// void hexdump(const void *mem, uint32_t len, uint8_t cols = 16) {
+//   const uint8_t* src = (const uint8_t*) mem;
+//   Serial.printf("\n[HEXDUMP] Address: 0x%08X len: 0x%X (%d)", (ptrdiff_t)src, len, len);
+//   for(uint32_t i = 0; i < len; i++) {
+//     if(i % cols == 0) {
+//       Serial.printf("\n[0x%08X] 0x%08X: ", (ptrdiff_t)src, i);
+//     }
+//     Serial.printf("%02X ", *src);
+//     src++;
+//   }
+//   Serial.printf("\n");
+// }
+
+// void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
+//   switch(type) {
+//     case WStype_DISCONNECTED:  //when disconnected
+//       Serial.printf("[WSc] Disconnected!\n");
+//       break;
+//     case WStype_CONNECTED: //when connected
+//       Serial.printf("[WSc] Connected to url: %s\n", payload);
+
+//       // send message to server when Connected
+//       webSocket.sendTXT("Connected"); //validation that you've connected
+//       break;
+//     case WStype_TEXT: //when you get a message
+//       Serial.printf("[WSc] get text: %s\n", payload);
+
+//       // send message to server
+//       // webSocket.sendTXT("message here");
+//       break;
+//     case WStype_BIN:
+//       Serial.printf("[WSc] get binary length: %u\n", length);
+//       hexdump(payload, length);
+
+//       // send data to server
+//       // webSocket.sendBIN(payload, length);
+//       break;
+//     case WStype_ERROR:
+//     case WStype_FRAGMENT_TEXT_START:
+//     case WStype_FRAGMENT_BIN_START:
+//     case WStype_FRAGMENT:
+//     case WStype_FRAGMENT_FIN:
+//       break;
+//   }
+// }
+
+class MyCallbacks: public BLECharacteristicCallbacks {
+    void onWrite(BLECharacteristic *pCharacteristic) {
+      std::string value = pCharacteristic->getValue();
+
+      if (value.length() > 0) {
+        // Serial.println("*********");
+        Serial.print("New value: ");
+        for (int i = 0; i < value.length(); i++)
+        {
+          Serial.print(value[i]);
+        }
+
+        // Serial.println();
+        // Serial.println("*********");
+
+        pCharacteristic->setValue(value +"\n"); // must add seperator \n for it to register on BLE terminal
+        pCharacteristic->notify();
+      }
     }
-    Serial.printf("%02X ", *src);
-    src++;
-  }
-  Serial.printf("\n");
-}
-
-void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
-  switch(type) {
-    case WStype_DISCONNECTED:  //when disconnected
-      Serial.printf("[WSc] Disconnected!\n");
-      break;
-    case WStype_CONNECTED: //when connected
-      Serial.printf("[WSc] Connected to url: %s\n", payload);
-
-      // send message to server when Connected
-      webSocket.sendTXT("Connected"); //validation that you've connected
-      break;
-    case WStype_TEXT: //when you get a message
-      Serial.printf("[WSc] get text: %s\n", payload);
-
-      // send message to server
-      // webSocket.sendTXT("message here");
-      break;
-    case WStype_BIN:
-      Serial.printf("[WSc] get binary length: %u\n", length);
-      hexdump(payload, length);
-
-      // send data to server
-      // webSocket.sendBIN(payload, length);
-      break;
-    case WStype_ERROR:
-    case WStype_FRAGMENT_TEXT_START:
-    case WStype_FRAGMENT_BIN_START:
-    case WStype_FRAGMENT:
-    case WStype_FRAGMENT_FIN:
-      break;
-  }
-}
+};
 
 void setup() {
     Serial.begin(115200);
@@ -370,6 +406,27 @@ void setup() {
     tft.setSwapBytes(true);
     tft.pushImage(0, 0,  160, 80, ttgo);
 
+    BLEDevice::init(BLE_NAME);
+    BLEServer *pServer = BLEDevice::createServer();
+
+    BLEService *pService = pServer->createService(SERVICE_UUID);
+
+    pCharacteristic = pService->createCharacteristic(
+                                          CHARACTERISTIC_UUID,
+                                          BLECharacteristic::PROPERTY_READ |
+                                          BLECharacteristic::PROPERTY_WRITE |
+                                          BLECharacteristic::PROPERTY_NOTIFY
+                                        );
+
+    pCharacteristic->setCallbacks(new MyCallbacks());
+    
+    pCharacteristic->addDescriptor(new BLE2902());
+
+    pService->start();
+
+    BLEAdvertising *pAdvertising = pServer->getAdvertising();
+    pAdvertising->start();
+
     Wire.begin();
     delay(2000);
 
@@ -418,14 +475,22 @@ void setup() {
 }
 
 void loop() {
+    // Serial.println(pServer->getConnectedCount());
+
     IMU_Show();
     server.handleClient();  
-    delay(1);
+    // delay(1);
     // webSocket.loop();
 
-    // String url = "{\"id\": \"" + mac_address + "\",\"x\":" + quat.x + ",\"y\":" + quat.y + ",\"z\":" + quat.z +  ",\"w\":" + quat.w + "}";
-    String url = String(quat.x) + " " + quat.y + " " + quat.z +  " " + quat.w;
+    String url = "{\"id\": \"" + mac_address + "\",\"x\":" + quat.x + ",\"y\":" + quat.y + ",\"z\":" + quat.z +  ",\"w\":" + quat.w + "}";
+    // String url = String(quat.x) + " " + quat.y + " " + quat.z +  " " + quat.w;
     Serial.println(url);
+
+    // String message = "Hello, world!";
+    pCharacteristic->setValue(url.c_str());
+
+    // Send a notification to connected clients
+    pCharacteristic->notify();
     // webSocket.sendTXT(url.c_str());
 
 }
@@ -433,7 +498,7 @@ void loop() {
 void IMU_Show() {
   if (mpu.update()) {
         static uint32_t prev_ms = millis();
-        if (millis() > prev_ms + 50) {
+        if (millis() > prev_ms + 10) {
             print_roll_pitch_yaw();
             prev_ms = millis();
         }
