@@ -1,8 +1,9 @@
 #include "MPU9250.h"
 #include "ttgo.h"
 #include <TFT_eSPI.h>
+
 #include <pcf8563.h>
-#include <WiFiManager.h>
+//#include <WiFiManager.h>
 #include <WiFi.h> 
 #include <WiFiClient.h>
 #include <WebServer.h>
@@ -17,7 +18,7 @@
 MPU9250 mpu;
 TFT_eSPI tft = TFT_eSPI(); 
 PCF8563_Class rtc; 
-WiFiManager wifiManager;
+//WiFiManager wifiManager;
 // WebSocketsClient webSocket;
 BLECharacteristic* pCharacteristic;
 
