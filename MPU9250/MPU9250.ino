@@ -1,25 +1,25 @@
 #include "MPU9250.h"
 #include "ttgo.h"
 #include <TFT_eSPI.h>
-
 #include <pcf8563.h>
 //#include <WiFiManager.h>
-#include <WiFi.h> 
-#include <WiFiClient.h>
-#include <WebServer.h>
-#include <ESPmDNS.h>
-#include <Update.h>
+//#include <WiFi.h> 
+//#include <WiFiClient.h>
+//#include <WebServer.h>
+//#include <ESPmDNS.h>
+//#include <Update.h>
 // #include <WebSocketsClient.h>
 #include <BLEDevice.h>
 #include <BLEUtils.h>
 #include <BLEServer.h>
 #include <BLE2902.h>
+#include "esp_bt_main.h"
+#include "esp_bt_device.h"
 
 MPU9250 mpu;
 TFT_eSPI tft = TFT_eSPI(); 
 PCF8563_Class rtc; 
-//WiFiManager wifiManager;
-// WebSocketsClient webSocket;
+
 BLECharacteristic* pCharacteristic;
 
 struct Quat {
@@ -50,12 +50,9 @@ uint32_t pressedTime = 0;
 bool charge_indication = false;
 
 uint8_t hh, mm, ss ;
-const char* host = "esp32-9";
-const char* ssid = "SETUP-AE05";
-const char* password = "faucet4039dozed";
-String serverIP = "mocap.local";
 String mac_address;
-WebServer server(80);
+// WebServer server(80);
+int pacnum=0;
 
 
 #define TP_PIN_PIN          33
@@ -78,218 +75,6 @@ BLEUUID  SERVICE_UUID("6E400001-B5A3-F393-E0A9-E50E24DCCA9E"); // UART service U
 BLEUUID CHARACTERISTIC_UUID ("6E400002-B5A3-F393-E0A9-E50E24DCCA9E");
 
 
-/*
-
-* Login page
-
-*/
-
-const char* loginIndex =
-
-"<form name='loginForm'>"
-
-    "<table width='20%' bgcolor='A09F9F' align='center'>"
-
-        "<tr>"
-
-            "<td colspan=2>"
-
-                "<center><font size=4><b>ESP32 Login Page</b></font></center>"
-
-                "<br>"
-
-            "</td>"
-
-            "<br>"
-
-            "<br>"
-
-        "</tr>"
-
-        "<tr>"
-
-             "<td>Username:</td>"
-
-             "<td><input type='text' size=25 name='userid'><br></td>"
-
-        "</tr>"
-
-        "<br>"
-
-        "<br>"
-
-        "<tr>"
-
-            "<td>Password:</td>"
-
-            "<td><input type='Password' size=25 name='pwd'><br></td>"
-
-            "<br>"
-
-            "<br>"
-
-        "</tr>"
-
-        "<tr>"
-
-            "<td><input type='submit' onclick='check(this.form)' value='Login'></td>"
-
-        "</tr>"
-
-    "</table>"
-
-"</form>"
-
-"<script>"
-
-    "function check(form)"
-
-    "{"
-
-    "if(form.userid.value=='admin' && form.pwd.value=='admin')"
-
-    "{"
-
-    "window.open('/serverIndex')"
-
-    "}"
-
-    "else"
-
-    "{"
-
-    " alert('Error Password or Username')/*displays error message*/"
-
-    "}"
-
-    "}"
-
-"</script>";
-
-/*
-
-* Server Index Page
-
-*/
-
-const char* serverIndex =
-
-"<script src='https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js'></script>"
-
-"<form method='POST' action='#' enctype='multipart/form-data' id='upload_form'>"
-
-   "<input type='file' name='update'>"
-
-        "<input type='submit' value='Update'>"
-
-    "</form>"
-
-"<div id='prg'>progress: 0%</div>"
-
-"<script>"
-
-  "$('form').submit(function(e){"
-
-  "e.preventDefault();"
-
-  "var form = $('#upload_form')[0];"
-
-  "var data = new FormData(form);"
-
-  " $.ajax({"
-
-  "url: '/update',"
-
-  "type: 'POST',"
-
-  "data: data,"
-
-  "contentType: false,"
-
-  "processData:false,"
-
-  "xhr: function() {"
-
-  "var xhr = new window.XMLHttpRequest();"
-
-  "xhr.upload.addEventListener('progress', function(evt) {"
-
-  "if (evt.lengthComputable) {"
-
-  "var per = evt.loaded / evt.total;"
-
-  "$('#prg').html('progress: ' + Math.round(per*100) + '%');"
-
-  "}"
-
-  "}, false);"
-
-  "return xhr;"
-
-  "},"
-
-  "success:function(d, s) {"
-
-  "console.log('success!')"
-
-  "},"
-
-  "error: function (a, b, c) {"
-
-  "}"
-
-  "});"
-
-  "});"
-
-"</script>";
-
-// void hexdump(const void *mem, uint32_t len, uint8_t cols = 16) {
-//   const uint8_t* src = (const uint8_t*) mem;
-//   Serial.printf("\n[HEXDUMP] Address: 0x%08X len: 0x%X (%d)", (ptrdiff_t)src, len, len);
-//   for(uint32_t i = 0; i < len; i++) {
-//     if(i % cols == 0) {
-//       Serial.printf("\n[0x%08X] 0x%08X: ", (ptrdiff_t)src, i);
-//     }
-//     Serial.printf("%02X ", *src);
-//     src++;
-//   }
-//   Serial.printf("\n");
-// }
-
-// void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
-//   switch(type) {
-//     case WStype_DISCONNECTED:  //when disconnected
-//       Serial.printf("[WSc] Disconnected!\n");
-//       break;
-//     case WStype_CONNECTED: //when connected
-//       Serial.printf("[WSc] Connected to url: %s\n", payload);
-
-//       // send message to server when Connected
-//       webSocket.sendTXT("Connected"); //validation that you've connected
-//       break;
-//     case WStype_TEXT: //when you get a message
-//       Serial.printf("[WSc] get text: %s\n", payload);
-
-//       // send message to server
-//       // webSocket.sendTXT("message here");
-//       break;
-//     case WStype_BIN:
-//       Serial.printf("[WSc] get binary length: %u\n", length);
-//       hexdump(payload, length);
-
-//       // send data to server
-//       // webSocket.sendBIN(payload, length);
-//       break;
-//     case WStype_ERROR:
-//     case WStype_FRAGMENT_TEXT_START:
-//     case WStype_FRAGMENT_BIN_START:
-//     case WStype_FRAGMENT:
-//     case WStype_FRAGMENT_FIN:
-//       break;
-//   }
-// }
-
 class MyCallbacks: public BLECharacteristicCallbacks {
     void onWrite(BLECharacteristic *pCharacteristic) {
       std::string value = pCharacteristic->getValue();
@@ -302,23 +87,26 @@ class MyCallbacks: public BLECharacteristicCallbacks {
           Serial.print(value[i]);
         }
 
-        // Serial.println();
-        // Serial.println("*********");
-
         pCharacteristic->setValue(value +"\n"); // must add seperator \n for it to register on BLE terminal
         pCharacteristic->notify();
       }
     }
 };
 
+// void printDeviceAddress() {
+//   const uint8_t* point = esp_bt_dev_get_address();
+//   for (int i = 0; i < 6; i++) {
+//     char str[3];
+//     sprintf(str, "%02X", (int)point[i]);
+//     Serial.print(str);
+//     if (i < 5){
+//       Serial.print(":");
+//     }
+//   }
+// }
+
 void setup() {
     Serial.begin(115200);
-
-    WiFi.begin(ssid, password);
-    while (WiFi.status() != WL_CONNECTED) {
-      delay(500);
-      Serial.print(".");
-    }
 
     // Serial.println("");
     // Serial.print("Connected to ");
@@ -327,80 +115,7 @@ void setup() {
     // Serial.println(WiFi.localIP());
 
     // Serial.println(mac_address);
-    mac_address = WiFi.macAddress();
-
-    /*use mdns for host name resolution*/
-
-    if (!MDNS.begin(host)) { //http://esp32.local
-      // Serial.println("Error setting up MDNS responder!");
-      while (1) {
-        delay(1000);
-      }
-    }
-
-    // Serial.println("mDNS responder started");
-
-    /*return index page which is stored in serverIndex */
-
-    server.on("/", HTTP_GET, []() {
-      server.sendHeader("Connection", "close");
-      server.send(200, "text/html", loginIndex);
-    });
-
-    server.on("/serverIndex", HTTP_GET, []() {
-      server.sendHeader("Connection", "close");
-      server.send(200, "text/html", serverIndex);
-    });
-
-    /*handling uploading firmware file */
-
-    server.on("/update", HTTP_POST, []() {
-
-      server.sendHeader("Connection", "close");
-
-      server.send(200, "text/plain", (Update.hasError()) ? "FAIL" : "OK");
-
-      ESP.restart();
-
-    }, []() {
-
-      HTTPUpload& upload = server.upload();
-
-      if (upload.status == UPLOAD_FILE_START) {
-
-        Serial.printf("Update: %s\n", upload.filename.c_str());
-
-        if (!Update.begin(UPDATE_SIZE_UNKNOWN)) { //start with max available size
-
-          Update.printError(Serial);
-
-        }
-
-      } else if (upload.status == UPLOAD_FILE_WRITE) {
-
-        /* flashing firmware to ESP*/
-
-        if (Update.write(upload.buf, upload.currentSize) != upload.currentSize) {
-
-          Update.printError(Serial);
-
-        }
-
-      } else if (upload.status == UPLOAD_FILE_END) {
-
-        if (Update.end(true)) { //true to set the size to the current progress
-
-          Serial.printf("Update Success: %u\nRebooting...\n", upload.totalSize);
-
-        } else {
-
-          Update.printError(Serial);
-
-        }
-      }
-    });
-
-    server.begin();
+    // mac_address = WiFi.macAddress();
 
     tft.init();
     tft.setRotation(1);
@@ -427,6 +142,9 @@ void setup() {
 
     BLEAdvertising *pAdvertising = pServer->getAdvertising();
     pAdvertising->start();
+
+    // printDeviceAddress();
+    mac_address = BLEDevice::getAddress().toString().c_str();
 
     Wire.begin();
     delay(2000);
@@ -464,37 +182,162 @@ void setup() {
     // print_calibration();
     mpu.verbose(false);
 
-    // webSocket.begin(serverIP, 3000, "/hub");
-    // // event handler
-    // webSocket.onEvent(webSocketEvent);
-    // // use HTTP Basic Authorization this is optional remove if not needed
-    // // webSocket.setAuthorization("user", "Password");
+    // pinMode(TP_PIN_PIN, INPUT);
+    // //! Must be set to pull-up output mode in order to wake up in deep sleep mode
+    // pinMode(TP_PWR_PIN, PULLUP);
+    // digitalWrite(TP_PWR_PIN, HIGH);
 
-    // // try ever 5000 again if connection has failed
-    // webSocket.setReconnectInterval(5000);
-    // webSocket.sendTXT(String(millis()).c_str());
+    // pinMode(LED_PIN, OUTPUT);
+
+    // pinMode(CHARGE_PIN, INPUT_PULLUP);
 }
 
 void loop() {
-    // Serial.println(pServer->getConnectedCount());
+  // Serial.println("outside");
+  //   if (digitalRead(TP_PIN_PIN) == HIGH) {
+  //       if (!pressed) {
+  //         Serial.println("url");
+  //         initial = 1;
+  //         targetTime = millis() + 1000;
+  //         tft.fillScreen(TFT_BLACK);
+  //         omm = 99;
+  //         func_select = func_select + 1 > 2 ? 0 : func_select + 1;
+  //         digitalWrite(LED_PIN, HIGH);
+  //         delay(100);
+  //         digitalWrite(LED_PIN, LOW);
+  //         pressed = true;
+  //         pressedTime = millis();
+  //       } else {
+  //         Serial.println("url");
+  //         if (millis() - pressedTime > 3000) {
+  //             tft.fillScreen(TFT_BLACK);
+  //             tft.drawString("Reset WiFi Setting",  20, tft.height() / 2 );
+  //             delay(3000);
+  //             wifiManager.resetSettings();
+  //             wifiManager.erase(true);
+  //             esp_restart();
+  //         }
+  //       }
+  //   } else {
+  //     pressed = false;
+  //   }
 
-    IMU_Show();
-    server.handleClient();  
-    // delay(1);
-    // webSocket.loop();
+  //   switch (func_select) {
+  //   case 0:
+  //       RTC_Show();
+  //       break;
+  //   case 1: {
+  //       IMU_Show();
+  //       server.handleClient();  
+  //       // delay(1);
+  //       // webSocket.loop();
 
-    String url = "{\"id\": \"" + mac_address + "\",\"x\":" + quat.x + ",\"y\":" + quat.y + ",\"z\":" + quat.z +  ",\"w\":" + quat.w + "}";
-    // String url = String(quat.x) + " " + quat.y + " " + quat.z +  " " + quat.w;
-    Serial.println(url);
+  //       String url = String(pacnum) + "," + mpu.getGyroX() + "," + mpu.getGyroY() + "," + mpu.getGyroZ() + "," + mpu.getAccX() + "," + mpu.getAccY() + "," + mpu.getAccZ() + "," + mpu.getMagX() + "," + mpu.getMagY() + "," + mpu.getMagZ() + "," + quat.x + "," + quat.y +  "," + quat.z +  "," + quat.w;
+  //       pacnum++;
+        
+  //       // String url = "{\"id\": \"" + mac_address + "\",\"x\":" + quat.x + ",\"y\":" + quat.y + ",\"z\":" + quat.z +  ",\"w\":" + quat.w + "}";
+  //       // String url = String(quat.x) + " " + quat.y + " " + quat.z +  " " + quat.w;
+  //       Serial.println(url);
 
-    // String message = "Hello, world!";
-    pCharacteristic->setValue(url.c_str());
+  //       // String message = "Hello, world!";
+  //       pCharacteristic->setValue(url.c_str());
 
-    // Send a notification to connected clients
-    pCharacteristic->notify();
-    // webSocket.sendTXT(url.c_str());
+  //       // Send a notification to connected clients
+  //       pCharacteristic->notify();
+  //       // webSocket.sendTXT(url.c_str());
+  //   }
+  //       break;
+  //   case 2: {
+  //       tft.setTextColor(TFT_GREEN, TFT_BLACK);
+  //       tft.setTextDatum(MC_DATUM);
+  //       tft.drawString("Press again to wake up",  tft.width() / 2, tft.height() / 2 );
+  //       // mpu.setSleepEnabled(true);
+  //       Serial.println("Go to Sleep");
+  //       delay(3000);
+  //       tft.writecommand(ST7735_SLPIN);
+  //       tft.writecommand(ST7735_DISPOFF);
+  //       esp_sleep_enable_ext1_wakeup(GPIO_SEL_33, ESP_EXT1_WAKEUP_ANY_HIGH);
+  //       esp_deep_sleep_start();
+  //   }
+  //       break;
+  //   default:
+  //       break;
+  //   }
+
+  IMU_Show();
+
+  // String url = String(pacnum) + "," + mpu.getGyroX() + "," + mpu.getGyroY() + "," + mpu.getGyroZ() + "," + mpu.getAccX() + "," + mpu.getAccY() + "," + mpu.getAccZ() + "," + mpu.getMagX() + "," + mpu.getMagY() + "," + mpu.getMagZ() + "," + quat.x + "," + quat.y +  "," + quat.z +  "," + quat.w;
+  // pacnum++;
+  
+  String url = "{\"id\": \"" + mac_address + "\",\"x\":" + quat.x + ",\"y\":" + quat.y + ",\"z\":" + quat.z +  ",\"w\":" + quat.w + "}";
+  // String url = String(quat.x) + " " + quat.y + " " + quat.z +  " " + quat.w;
+  Serial.println(url);
+
+  pCharacteristic->setValue(url.c_str());
+
+  // Send a notification to connected clients
+  pCharacteristic->notify();
 
 }
+
+String getVoltage()
+{
+    uint16_t v = analogRead(BATT_ADC_PIN);
+    float battery_voltage = ((float)v / 4095.0) * 2.0 * 3.3 * (vref / 1000.0);
+    return String(battery_voltage) + "V";
+}
+
+void RTC_Show()
+{
+    if (targetTime < millis()) {
+        RTC_Date datetime = rtc.getDateTime();
+        hh = datetime.hour;
+        mm = datetime.minute;
+        ss = datetime.second;
+        // Serial.printf("hh:%d mm:%d ss:%d\n", hh, mm, ss);
+        targetTime = millis() + 1000;
+        if (ss == 0 || initial) {
+            initial = 0;
+            tft.setTextColor(TFT_GREEN, TFT_BLACK);
+            tft.setCursor (8, 60);
+            tft.print(__DATE__); // This uses the standard ADAFruit small font
+        }
+
+        tft.setTextColor(TFT_BLUE, TFT_BLACK);
+        tft.drawCentreString(getVoltage(), 120, 60, 1); // Next size up font 2
+
+
+        // Update digital time
+        uint8_t xpos = 6;
+        uint8_t ypos = 0;
+        if (omm != mm) { // Only redraw every minute to minimise flicker
+            // Uncomment ONE of the next 2 lines, using the ghost image demonstrates text overlay as time is drawn over it
+            tft.setTextColor(0x39C4, TFT_BLACK);  // Leave a 7 segment ghost image, comment out next line!
+            //tft.setTextColor(TFT_BLACK, TFT_BLACK); // Set font colour to black to wipe image
+            // Font 7 is to show a pseudo 7 segment display.
+            // Font 7 only contains characters [space] 0 1 2 3 4 5 6 7 8 9 0 : .
+            tft.drawString("88:88", xpos, ypos, 7); // Overwrite the text to clear it
+            tft.setTextColor(0xFBE0, TFT_BLACK); // Orange
+            omm = mm;
+
+            if (hh < 10) xpos += tft.drawChar('0', xpos, ypos, 7);
+            xpos += tft.drawNumber(hh, xpos, ypos, 7);
+            xcolon = xpos;
+            xpos += tft.drawChar(':', xpos, ypos, 7);
+            if (mm < 10) xpos += tft.drawChar('0', xpos, ypos, 7);
+            tft.drawNumber(mm, xpos, ypos, 7);
+        }
+
+        if (ss % 2) { // Flash the colon
+            tft.setTextColor(0x39C4, TFT_BLACK);
+            xpos += tft.drawChar(':', xcolon, ypos, 7);
+            tft.setTextColor(0xFBE0, TFT_BLACK);
+        } else {
+            tft.drawChar(':', xcolon, ypos, 7);
+        }
+    }
+}
+
 
 void IMU_Show() {
   if (mpu.update()) {
