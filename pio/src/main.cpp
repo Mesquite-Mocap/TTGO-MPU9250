@@ -1,20 +1,15 @@
 #include "MPU9250.h"
-#include "ttgo.h"
+//#include "ttgo.h"
 #include <TFT_eSPI.h>
 #include <pcf8563.h>
-//#include <WiFiManager.h>
-//#include <WiFi.h> 
-//#include <WiFiClient.h>
-//#include <WebServer.h>
-//#include <ESPmDNS.h>
-//#include <Update.h>
-// #include <WebSocketsClient.h>
 #include <BLEDevice.h>
 #include <BLEUtils.h>
 #include <BLEServer.h>
 #include <BLE2902.h>
 // #include "esp_bt_main.h"
 // #include "esp_bt_device.h"
+	
+#include "esp_bt_device.h"
 
 MPU9250 mpu;
 TFT_eSPI tft = TFT_eSPI(); 
@@ -51,7 +46,6 @@ bool charge_indication = false;
 
 uint8_t hh, mm, ss ;
 String mac_address;
-// WebServer server(80);
 int pacnum=0;
 
 
@@ -67,7 +61,7 @@ int pacnum=0;
 #define CHARGE_PIN          32
 
 //maintain compatability with HM-10
-#define BLE_NAME "ESP32" //must match filters name in bluetoothterminal.js- navigator.bluetooth.requestDevice
+#define BLE_NAME "MM" //must match filters name in bluetoothterminal.js- navigator.bluetooth.requestDevice
 // BLEUUID  SERVICE_UUID((uint16_t)0x1802); // UART service UUID
 // BLEUUID CHARACTERISTIC_UUID ((uint16_t)0x1803);
 
@@ -93,36 +87,18 @@ class MyCallbacks: public BLECharacteristicCallbacks {
     }
 };
 
-// void printDeviceAddress() {
-//   const uint8_t* point = esp_bt_dev_get_address();
-//   for (int i = 0; i < 6; i++) {
-//     char str[3];
-//     sprintf(str, "%02X", (int)point[i]);
-//     Serial.print(str);
-//     if (i < 5){
-//       Serial.print(":");
-//     }
-//   }
-// }
-
 void setup() {
     Serial.begin(115200);
-
-    // Serial.println("");
-    // Serial.print("Connected to ");
-    // Serial.println(ssid);
-    // Serial.print("IP address: ");
-    // Serial.println(WiFi.localIP());
-
-    // Serial.println(mac_address);
-    // mac_address = WiFi.macAddress();
 
     tft.init();
     tft.setRotation(1);
     tft.setSwapBytes(true);
-    tft.pushImage(0, 0,  160, 80, ttgo);
+   // tft.pushImage(0, 0,  160, 80, ttgo);
+
+    // printDeviceAddress();
 
     BLEDevice::init(BLE_NAME);
+
     BLEServer *pServer = BLEDevice::createServer();
 
     BLEService *pService = pServer->createService(SERVICE_UUID);
@@ -138,13 +114,17 @@ void setup() {
     
     pCharacteristic->addDescriptor(new BLE2902());
 
+    mac_address = BLEDevice::getAddress().toString().c_str();
+    Serial.println(mac_address);
+    esp_ble_gap_set_device_name(("MM-" + mac_address).c_str());
+    esp_bt_dev_set_device_name(("MM-" + mac_address).c_str());
+
     pService->start();
 
     BLEAdvertising *pAdvertising = pServer->getAdvertising();
     pAdvertising->start();
 
-    // printDeviceAddress();
-    mac_address = BLEDevice::getAddress().toString().c_str();
+
 
     Wire.begin();
     delay(2000);
@@ -201,7 +181,7 @@ void setup() {
 }
 
 void loop() {
-  Serial.println(digitalRead(TP_PIN_PIN));
+ // Serial.println(digitalRead(TP_PIN_PIN));
   if (digitalRead(TP_PIN_PIN) == HIGH) {
       if (!pressed) {
         Serial.println("url");
@@ -232,7 +212,7 @@ void loop() {
   case 0: {
       IMU_Show();
 
-      String url = String(pacnum) + "," + mpu.getGyroX() + "," + mpu.getGyroY() + "," + mpu.getGyroZ() + "," + mpu.getAccX() + "," + mpu.getAccY() + "," + mpu.getAccZ() + "," + mpu.getMagX() + "," + mpu.getMagY() + "," + mpu.getMagZ() + "," + quat.x + "," + quat.y +  "," + quat.z +  "," + quat.w;
+      String url = String(pacnum) + "," + mpu.getGyroX() + "," + mpu.getGyroY() + "," + mpu.getGyroZ() + "," + mpu.getAccX() + "," + mpu.getAccY() + "," + mpu.getAccZ() + "," + mpu.getMagX() + "," + mpu.getMagY() + "," + mpu.getMagZ() + "," + quat.x + "," + quat.y +  "," + quat.z +  "," + quat.w + "," + mac_address;
       pacnum++;
       
       // String url = "{\"id\": \"" + mac_address + "\",\"x\":" + quat.x + ",\"y\":" + quat.y + ",\"z\":" + quat.z +  ",\"w\":" + quat.w + "}";
@@ -254,8 +234,8 @@ void loop() {
       // mpu.setSleepEnabled(true);
       Serial.println("Go to Sleep");
       delay(3000);
-      tft.writecommand(ST7735_SLPIN);
-      tft.writecommand(ST7735_DISPOFF);
+     // tft.writecommand(ST7735_SLPIN);
+     // tft.writecommand(ST7735_DISPOFF);
       esp_sleep_enable_ext1_wakeup(GPIO_SEL_33, ESP_EXT1_WAKEUP_ANY_HIGH);
       esp_deep_sleep_start();
   }
@@ -263,20 +243,8 @@ void loop() {
   default:
       break;
   }
-
-  IMU_Show();
-
-  // String url = String(pacnum) + "," + mpu.getGyroX() + "," + mpu.getGyroY() + "," + mpu.getGyroZ() + "," + mpu.getAccX() + "," + mpu.getAccY() + "," + mpu.getAccZ() + "," + mpu.getMagX() + "," + mpu.getMagY() + "," + mpu.getMagZ() + "," + quat.x + "," + quat.y +  "," + quat.z +  "," + quat.w;
-  // pacnum++;
   
-  String url = "{\"id\": \"" + mac_address + "\",\"x\":" + quat.x + ",\"y\":" + quat.y + ",\"z\":" + quat.z +  ",\"w\":" + quat.w + "}";
-  // String url = String(quat.x) + " " + quat.y + " " + quat.z +  " " + quat.w;
-  Serial.println(url);
 
-  pCharacteristic->setValue(url.c_str());
-
-  // Send a notification to connected clients
-  pCharacteristic->notify();
 }
 
 void IMU_Show() {
@@ -290,9 +258,9 @@ void IMU_Show() {
         quat.y = mpu.getQuaternionY();
         quat.z = mpu.getQuaternionZ();
         quat.w = mpu.getQuaternionW();
-        euler.x = mpu.getEulerX();
-        euler.y = mpu.getEulerY();
-        euler.z = mpu.getEulerZ();
+        //euler.x = mpu.getEulerX();
+        //euler.y = mpu.getEulerY();
+        //euler.z = mpu.getEulerZ();
     }
 }
 
@@ -307,8 +275,8 @@ void print_roll_pitch_yaw() {
     tft.drawString(buff, 0, 0);
     snprintf(buff, sizeof(buff), "Q %.2f  %.2f  %.2f  %.2f", quat.w, quat.x, quat.y, quat.z);
     tft.drawString(buff, 0, 16);
-    snprintf(buff, sizeof(buff), "E %.2f  %.2f  %.2f", euler.x, euler.y, euler.z);
-    tft.drawString(buff, 0, 32);
+    //snprintf(buff, sizeof(buff), "E %.2f  %.2f  %.2f", euler.x, euler.y, euler.z);
+    //tft.drawString(buff, 0, 32);
 }
 
 void print_calibration() {
