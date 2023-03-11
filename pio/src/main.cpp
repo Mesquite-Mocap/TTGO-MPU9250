@@ -13,8 +13,8 @@
 #include <BLEUtils.h>
 #include <BLEServer.h>
 #include <BLE2902.h>
-#include "esp_bt_main.h"
-#include "esp_bt_device.h"
+// #include "esp_bt_main.h"
+// #include "esp_bt_device.h"
 
 MPU9250 mpu;
 TFT_eSPI tft = TFT_eSPI(); 
@@ -182,87 +182,87 @@ void setup() {
     // print_calibration();
     mpu.verbose(false);
 
-    // pinMode(TP_PIN_PIN, INPUT);
-    // //! Must be set to pull-up output mode in order to wake up in deep sleep mode
-    // pinMode(TP_PWR_PIN, PULLUP);
-    // digitalWrite(TP_PWR_PIN, HIGH);
+    pinMode(TP_PIN_PIN, INPUT);
+    //! Must be set to pull-up output mode in order to wake up in deep sleep mode
+    pinMode(TP_PWR_PIN, PULLUP);
+    digitalWrite(TP_PWR_PIN, HIGH);
 
-    // pinMode(LED_PIN, OUTPUT);
+    pinMode(LED_PIN, OUTPUT);
 
-    // pinMode(CHARGE_PIN, INPUT_PULLUP);
+    pinMode(CHARGE_PIN, INPUT_PULLUP);
+
+    attachInterrupt(CHARGE_PIN, [] {
+        charge_indication = true;
+    }, CHANGE);
+
+    if (digitalRead(CHARGE_PIN) == LOW) {
+        charge_indication = true;
+    }
 }
 
 void loop() {
-  // Serial.println("outside");
-  //   if (digitalRead(TP_PIN_PIN) == HIGH) {
-  //       if (!pressed) {
-  //         Serial.println("url");
-  //         initial = 1;
-  //         targetTime = millis() + 1000;
-  //         tft.fillScreen(TFT_BLACK);
-  //         omm = 99;
-  //         func_select = func_select + 1 > 2 ? 0 : func_select + 1;
-  //         digitalWrite(LED_PIN, HIGH);
-  //         delay(100);
-  //         digitalWrite(LED_PIN, LOW);
-  //         pressed = true;
-  //         pressedTime = millis();
-  //       } else {
-  //         Serial.println("url");
-  //         if (millis() - pressedTime > 3000) {
-  //             tft.fillScreen(TFT_BLACK);
-  //             tft.drawString("Reset WiFi Setting",  20, tft.height() / 2 );
-  //             delay(3000);
-  //             wifiManager.resetSettings();
-  //             wifiManager.erase(true);
-  //             esp_restart();
-  //         }
-  //       }
-  //   } else {
-  //     pressed = false;
-  //   }
+  Serial.println(digitalRead(TP_PIN_PIN));
+  if (digitalRead(TP_PIN_PIN) == HIGH) {
+      if (!pressed) {
+        Serial.println("url");
+        initial = 1;
+        targetTime = millis() + 1000;
+        tft.fillScreen(TFT_BLACK);
+        omm = 99;
+        func_select = func_select + 1 > 2 ? 0 : func_select + 1;
+        digitalWrite(LED_PIN, HIGH);
+        delay(100);
+        digitalWrite(LED_PIN, LOW);
+        pressed = true;
+        pressedTime = millis();
+      } else {
+        Serial.println("url");
+        if (millis() - pressedTime > 3000) {
+            tft.fillScreen(TFT_BLACK);
+            tft.drawString("Reset WiFi Setting",  20, tft.height() / 2 );
+            delay(3000);
+            esp_restart();
+        }
+      }
+  } else {
+    pressed = false;
+  }
 
-  //   switch (func_select) {
-  //   case 0:
-  //       RTC_Show();
-  //       break;
-  //   case 1: {
-  //       IMU_Show();
-  //       server.handleClient();  
-  //       // delay(1);
-  //       // webSocket.loop();
+  switch (func_select) {
+  case 0: {
+      IMU_Show();
 
-  //       String url = String(pacnum) + "," + mpu.getGyroX() + "," + mpu.getGyroY() + "," + mpu.getGyroZ() + "," + mpu.getAccX() + "," + mpu.getAccY() + "," + mpu.getAccZ() + "," + mpu.getMagX() + "," + mpu.getMagY() + "," + mpu.getMagZ() + "," + quat.x + "," + quat.y +  "," + quat.z +  "," + quat.w;
-  //       pacnum++;
-        
-  //       // String url = "{\"id\": \"" + mac_address + "\",\"x\":" + quat.x + ",\"y\":" + quat.y + ",\"z\":" + quat.z +  ",\"w\":" + quat.w + "}";
-  //       // String url = String(quat.x) + " " + quat.y + " " + quat.z +  " " + quat.w;
-  //       Serial.println(url);
+      String url = String(pacnum) + "," + mpu.getGyroX() + "," + mpu.getGyroY() + "," + mpu.getGyroZ() + "," + mpu.getAccX() + "," + mpu.getAccY() + "," + mpu.getAccZ() + "," + mpu.getMagX() + "," + mpu.getMagY() + "," + mpu.getMagZ() + "," + quat.x + "," + quat.y +  "," + quat.z +  "," + quat.w;
+      pacnum++;
+      
+      // String url = "{\"id\": \"" + mac_address + "\",\"x\":" + quat.x + ",\"y\":" + quat.y + ",\"z\":" + quat.z +  ",\"w\":" + quat.w + "}";
+      // String url = String(quat.x) + " " + quat.y + " " + quat.z +  " " + quat.w;
+      Serial.println(url);
 
-  //       // String message = "Hello, world!";
-  //       pCharacteristic->setValue(url.c_str());
+      // String message = "Hello, world!";
+      pCharacteristic->setValue(url.c_str());
 
-  //       // Send a notification to connected clients
-  //       pCharacteristic->notify();
-  //       // webSocket.sendTXT(url.c_str());
-  //   }
-  //       break;
-  //   case 2: {
-  //       tft.setTextColor(TFT_GREEN, TFT_BLACK);
-  //       tft.setTextDatum(MC_DATUM);
-  //       tft.drawString("Press again to wake up",  tft.width() / 2, tft.height() / 2 );
-  //       // mpu.setSleepEnabled(true);
-  //       Serial.println("Go to Sleep");
-  //       delay(3000);
-  //       tft.writecommand(ST7735_SLPIN);
-  //       tft.writecommand(ST7735_DISPOFF);
-  //       esp_sleep_enable_ext1_wakeup(GPIO_SEL_33, ESP_EXT1_WAKEUP_ANY_HIGH);
-  //       esp_deep_sleep_start();
-  //   }
-  //       break;
-  //   default:
-  //       break;
-  //   }
+      // Send a notification to connected clients
+      pCharacteristic->notify();
+      // webSocket.sendTXT(url.c_str());
+  }
+      break;
+  case 1: {
+      tft.setTextColor(TFT_GREEN, TFT_BLACK);
+      tft.setTextDatum(MC_DATUM);
+      tft.drawString("Press again to wake up",  tft.width() / 2, tft.height() / 2 );
+      // mpu.setSleepEnabled(true);
+      Serial.println("Go to Sleep");
+      delay(3000);
+      tft.writecommand(ST7735_SLPIN);
+      tft.writecommand(ST7735_DISPOFF);
+      esp_sleep_enable_ext1_wakeup(GPIO_SEL_33, ESP_EXT1_WAKEUP_ANY_HIGH);
+      esp_deep_sleep_start();
+  }
+      break;
+  default:
+      break;
+  }
 
   IMU_Show();
 
@@ -277,67 +277,7 @@ void loop() {
 
   // Send a notification to connected clients
   pCharacteristic->notify();
-
 }
-
-String getVoltage()
-{
-    uint16_t v = analogRead(BATT_ADC_PIN);
-    float battery_voltage = ((float)v / 4095.0) * 2.0 * 3.3 * (vref / 1000.0);
-    return String(battery_voltage) + "V";
-}
-
-void RTC_Show()
-{
-    if (targetTime < millis()) {
-        RTC_Date datetime = rtc.getDateTime();
-        hh = datetime.hour;
-        mm = datetime.minute;
-        ss = datetime.second;
-        // Serial.printf("hh:%d mm:%d ss:%d\n", hh, mm, ss);
-        targetTime = millis() + 1000;
-        if (ss == 0 || initial) {
-            initial = 0;
-            tft.setTextColor(TFT_GREEN, TFT_BLACK);
-            tft.setCursor (8, 60);
-            tft.print(__DATE__); // This uses the standard ADAFruit small font
-        }
-
-        tft.setTextColor(TFT_BLUE, TFT_BLACK);
-        tft.drawCentreString(getVoltage(), 120, 60, 1); // Next size up font 2
-
-
-        // Update digital time
-        uint8_t xpos = 6;
-        uint8_t ypos = 0;
-        if (omm != mm) { // Only redraw every minute to minimise flicker
-            // Uncomment ONE of the next 2 lines, using the ghost image demonstrates text overlay as time is drawn over it
-            tft.setTextColor(0x39C4, TFT_BLACK);  // Leave a 7 segment ghost image, comment out next line!
-            //tft.setTextColor(TFT_BLACK, TFT_BLACK); // Set font colour to black to wipe image
-            // Font 7 is to show a pseudo 7 segment display.
-            // Font 7 only contains characters [space] 0 1 2 3 4 5 6 7 8 9 0 : .
-            tft.drawString("88:88", xpos, ypos, 7); // Overwrite the text to clear it
-            tft.setTextColor(0xFBE0, TFT_BLACK); // Orange
-            omm = mm;
-
-            if (hh < 10) xpos += tft.drawChar('0', xpos, ypos, 7);
-            xpos += tft.drawNumber(hh, xpos, ypos, 7);
-            xcolon = xpos;
-            xpos += tft.drawChar(':', xpos, ypos, 7);
-            if (mm < 10) xpos += tft.drawChar('0', xpos, ypos, 7);
-            tft.drawNumber(mm, xpos, ypos, 7);
-        }
-
-        if (ss % 2) { // Flash the colon
-            tft.setTextColor(0x39C4, TFT_BLACK);
-            xpos += tft.drawChar(':', xcolon, ypos, 7);
-            tft.setTextColor(0xFBE0, TFT_BLACK);
-        } else {
-            tft.drawChar(':', xcolon, ypos, 7);
-        }
-    }
-}
-
 
 void IMU_Show() {
   if (mpu.update()) {
@@ -356,26 +296,19 @@ void IMU_Show() {
     }
 }
 
-void print_roll_pitch_yaw() {
-    // Serial.print("Yaw, Pitch, Roll: ");
-    // Serial.print(mpu.getYaw(), 2);
-    // Serial.print(", ");
-    // Serial.print(mpu.getPitch(), 2);
-    // Serial.print(", ");
-    // Serial.println(mpu.getRoll(), 2);
-    
+void print_roll_pitch_yaw() {    
     tft.setTextColor(TFT_GREEN, TFT_BLACK);
     tft.fillScreen(TFT_BLACK);
     tft.setTextDatum(TL_DATUM);
     // tft.drawString(mac_address,  0, 0, 4);
     // snprintf(buff, sizeof(buff), "%s", mac_address);
-    tft.drawString(buff, 0, 0);
+    // tft.drawString(buff, 0, 0);
     snprintf(buff, sizeof(buff), "--  w   x   y   z");
-    tft.drawString(buff, 0, 16);
+    tft.drawString(buff, 0, 0);
     snprintf(buff, sizeof(buff), "Q %.2f  %.2f  %.2f  %.2f", quat.w, quat.x, quat.y, quat.z);
-    tft.drawString(buff, 0, 32);
+    tft.drawString(buff, 0, 16);
     snprintf(buff, sizeof(buff), "E %.2f  %.2f  %.2f", euler.x, euler.y, euler.z);
-    tft.drawString(buff, 0, 48);
+    tft.drawString(buff, 0, 32);
 }
 
 void print_calibration() {
