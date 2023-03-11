@@ -181,7 +181,7 @@ void setup() {
 }
 
 void loop() {
-  Serial.println(digitalRead(TP_PIN_PIN));
+ // Serial.println(digitalRead(TP_PIN_PIN));
   if (digitalRead(TP_PIN_PIN) == HIGH) {
       if (!pressed) {
         Serial.println("url");
@@ -212,7 +212,7 @@ void loop() {
   case 0: {
       IMU_Show();
 
-      String url = String(pacnum) + "," + mpu.getGyroX() + "," + mpu.getGyroY() + "," + mpu.getGyroZ() + "," + mpu.getAccX() + "," + mpu.getAccY() + "," + mpu.getAccZ() + "," + mpu.getMagX() + "," + mpu.getMagY() + "," + mpu.getMagZ() + "," + quat.x + "," + quat.y +  "," + quat.z +  "," + quat.w;
+      String url = String(pacnum) + "," + mpu.getGyroX() + "," + mpu.getGyroY() + "," + mpu.getGyroZ() + "," + mpu.getAccX() + "," + mpu.getAccY() + "," + mpu.getAccZ() + "," + mpu.getMagX() + "," + mpu.getMagY() + "," + mpu.getMagZ() + "," + quat.x + "," + quat.y +  "," + quat.z +  "," + quat.w + "," + mac_address;
       pacnum++;
       
       // String url = "{\"id\": \"" + mac_address + "\",\"x\":" + quat.x + ",\"y\":" + quat.y + ",\"z\":" + quat.z +  ",\"w\":" + quat.w + "}";
@@ -243,20 +243,8 @@ void loop() {
   default:
       break;
   }
-
-  IMU_Show();
-
-   String url = String(pacnum) + "," + mpu.getGyroX() + "," + mpu.getGyroY() + "," + mpu.getGyroZ() + "," + mpu.getAccX() + "," + mpu.getAccY() + "," + mpu.getAccZ() + "," + mpu.getMagX() + "," + mpu.getMagY() + "," + mpu.getMagZ() + "," + quat.x + "," + quat.y +  "," + quat.z +  "," + quat.w + "," + mac_address;
-   pacnum++;
   
-  //String url = "{\"id\": \"" + mac_address + "\",\"x\":" + quat.x + ",\"y\":" + quat.y + ",\"z\":" + quat.z +  ",\"w\":" + quat.w + "}";
-  // String url = String(quat.x) + " " + quat.y + " " + quat.z +  " " + quat.w;
-  Serial.println(url);
 
-  pCharacteristic->setValue(url.c_str());
-
-  // Send a notification to connected clients
-  pCharacteristic->notify();
 }
 
 void IMU_Show() {
