@@ -127,6 +127,8 @@ void setup() {
 
 
     Wire.begin();
+    Wire.setClock(400000);
+
     delay(2000);
 
     if (!mpu.setup(0x69)) {  // change to your own address
