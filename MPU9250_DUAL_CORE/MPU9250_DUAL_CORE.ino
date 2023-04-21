@@ -235,8 +235,8 @@ void loop() {
         mpu.sleep(true);
         Serial.println("Go to Sleep");
         delay(5000);
-        tft.writecommand(ST7735_SLPIN);
-        tft.writecommand(ST7735_DISPOFF);
+        //tft.writecommand(ST7735_SLPIN);
+        //tft.writecommand(ST7735_DISPOFF);
         esp_sleep_enable_ext1_wakeup(GPIO_SEL_33, ESP_EXT1_WAKEUP_ANY_HIGH);
         esp_deep_sleep_start();
 
