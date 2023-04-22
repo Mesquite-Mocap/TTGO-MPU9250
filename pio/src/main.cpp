@@ -1,4 +1,4 @@
-#include "MPU9250.h"
+#include <MPU9250.h>
 //#include "ttgo.h"
 #include <TFT_eSPI.h>
 #include <pcf8563.h>
@@ -86,6 +86,72 @@ class MyCallbacks: public BLECharacteristicCallbacks {
       }
     }
 };
+
+
+void print_roll_pitch_yaw() {    
+    tft.setTextColor(TFT_GREEN, TFT_BLACK);
+    tft.fillScreen(TFT_BLACK);
+    tft.setTextDatum(TL_DATUM);
+    // tft.drawString(mac_address,  0, 0, 4);
+    // snprintf(buff, sizeof(buff), "%s", mac_address);
+    // tft.drawString(buff, 0, 0);
+    snprintf(buff, sizeof(buff), "--  w   x   y   z");
+    tft.drawString(buff, 0, 0);
+    snprintf(buff, sizeof(buff), "Q %.2f  %.2f  %.2f  %.2f", quat.w, quat.x, quat.y, quat.z);
+    tft.drawString(buff, 0, 16);
+    //snprintf(buff, sizeof(buff), "E %.2f  %.2f  %.2f", euler.x, euler.y, euler.z);
+    //tft.drawString(buff, 0, 32);
+}
+
+void print_calibration() {
+    Serial.println("< calibration parameters >");
+    Serial.println("accel bias [g]: ");
+    Serial.print(mpu.getAccBiasX() * 1000.f / (float)MPU9250::CALIB_ACCEL_SENSITIVITY);
+    Serial.print(", ");
+    Serial.print(mpu.getAccBiasY() * 1000.f / (float)MPU9250::CALIB_ACCEL_SENSITIVITY);
+    Serial.print(", ");
+    Serial.print(mpu.getAccBiasZ() * 1000.f / (float)MPU9250::CALIB_ACCEL_SENSITIVITY);
+    Serial.println();
+    Serial.println("gyro bias [deg/s]: ");
+    Serial.print(mpu.getGyroBiasX() / (float)MPU9250::CALIB_GYRO_SENSITIVITY);
+    Serial.print(", ");
+    Serial.print(mpu.getGyroBiasY() / (float)MPU9250::CALIB_GYRO_SENSITIVITY);
+    Serial.print(", ");
+    Serial.print(mpu.getGyroBiasZ() / (float)MPU9250::CALIB_GYRO_SENSITIVITY);
+    Serial.println();
+    Serial.println("mag bias [mG]: ");
+    Serial.print(mpu.getMagBiasX());
+    Serial.print(", ");
+    Serial.print(mpu.getMagBiasY());
+    Serial.print(", ");
+    Serial.print(mpu.getMagBiasZ());
+    Serial.println();
+    Serial.println("mag scale []: ");
+    Serial.print(mpu.getMagScaleX());
+    Serial.print(", ");
+    Serial.print(mpu.getMagScaleY());
+    Serial.print(", ");
+    Serial.print(mpu.getMagScaleZ());
+    Serial.println();
+}
+
+
+void IMU_Show() {
+  if (mpu.update()) {
+        static uint32_t prev_ms = millis();
+        if (millis() > prev_ms + 10) {
+            print_roll_pitch_yaw();
+            prev_ms = millis();
+        }
+        quat.x = mpu.getQuaternionX();
+        quat.y = mpu.getQuaternionY();
+        quat.z = mpu.getQuaternionZ();
+        quat.w = mpu.getQuaternionW();
+        //euler.x = mpu.getEulerX();
+        //euler.y = mpu.getEulerY();
+        //euler.z = mpu.getEulerZ();
+    }
+}
 
 void setup() {
     Serial.begin(115200);
@@ -247,66 +313,4 @@ void loop() {
 
 }
 
-void IMU_Show() {
-  if (mpu.update()) {
-        static uint32_t prev_ms = millis();
-        if (millis() > prev_ms + 10) {
-            print_roll_pitch_yaw();
-            prev_ms = millis();
-        }
-        quat.x = mpu.getQuaternionX();
-        quat.y = mpu.getQuaternionY();
-        quat.z = mpu.getQuaternionZ();
-        quat.w = mpu.getQuaternionW();
-        //euler.x = mpu.getEulerX();
-        //euler.y = mpu.getEulerY();
-        //euler.z = mpu.getEulerZ();
-    }
-}
 
-void print_roll_pitch_yaw() {    
-    tft.setTextColor(TFT_GREEN, TFT_BLACK);
-    tft.fillScreen(TFT_BLACK);
-    tft.setTextDatum(TL_DATUM);
-    // tft.drawString(mac_address,  0, 0, 4);
-    // snprintf(buff, sizeof(buff), "%s", mac_address);
-    // tft.drawString(buff, 0, 0);
-    snprintf(buff, sizeof(buff), "--  w   x   y   z");
-    tft.drawString(buff, 0, 0);
-    snprintf(buff, sizeof(buff), "Q %.2f  %.2f  %.2f  %.2f", quat.w, quat.x, quat.y, quat.z);
-    tft.drawString(buff, 0, 16);
-    //snprintf(buff, sizeof(buff), "E %.2f  %.2f  %.2f", euler.x, euler.y, euler.z);
-    //tft.drawString(buff, 0, 32);
-}
-
-void print_calibration() {
-    Serial.println("< calibration parameters >");
-    Serial.println("accel bias [g]: ");
-    Serial.print(mpu.getAccBiasX() * 1000.f / (float)MPU9250::CALIB_ACCEL_SENSITIVITY);
-    Serial.print(", ");
-    Serial.print(mpu.getAccBiasY() * 1000.f / (float)MPU9250::CALIB_ACCEL_SENSITIVITY);
-    Serial.print(", ");
-    Serial.print(mpu.getAccBiasZ() * 1000.f / (float)MPU9250::CALIB_ACCEL_SENSITIVITY);
-    Serial.println();
-    Serial.println("gyro bias [deg/s]: ");
-    Serial.print(mpu.getGyroBiasX() / (float)MPU9250::CALIB_GYRO_SENSITIVITY);
-    Serial.print(", ");
-    Serial.print(mpu.getGyroBiasY() / (float)MPU9250::CALIB_GYRO_SENSITIVITY);
-    Serial.print(", ");
-    Serial.print(mpu.getGyroBiasZ() / (float)MPU9250::CALIB_GYRO_SENSITIVITY);
-    Serial.println();
-    Serial.println("mag bias [mG]: ");
-    Serial.print(mpu.getMagBiasX());
-    Serial.print(", ");
-    Serial.print(mpu.getMagBiasY());
-    Serial.print(", ");
-    Serial.print(mpu.getMagBiasZ());
-    Serial.println();
-    Serial.println("mag scale []: ");
-    Serial.print(mpu.getMagScaleX());
-    Serial.print(", ");
-    Serial.print(mpu.getMagScaleY());
-    Serial.print(", ");
-    Serial.print(mpu.getMagScaleZ());
-    Serial.println();
-}

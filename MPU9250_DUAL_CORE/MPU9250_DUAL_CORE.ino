@@ -10,6 +10,8 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 
+int writeCount = 0;
+
 MPU9250 mpu;
 TFT_eSPI tft = TFT_eSPI(); 
 PCF8563_Class rtc; 
@@ -84,7 +86,16 @@ class MyCallbacks: public BLECharacteristicCallbacks {
     std::string value = pChar->getValue();
     Serial.print("Received Value: ");
     Serial.println(value.c_str());
-    start=true;
+
+
+           tft.fillScreen(TFT_BLACK);
+         tft.setTextColor(TFT_WHITE, TFT_BLACK);
+        tft.drawString(mac_address, 20, 1);
+        tft.setTextColor(TFT_RED, TFT_BLACK);
+        tft.drawString("CONNECTED", 20, tft.height() / 2 );
+                        start=true;
+
+
   }
 };
 
@@ -151,33 +162,43 @@ void setup() {
         }
     }
 
-    tft.fillScreen(TFT_BLACK);
-    tft.setTextColor(TFT_YELLOW, TFT_BLACK);
+
+
+        tft.fillScreen(TFT_BLACK);
+         tft.setTextColor(TFT_WHITE, TFT_BLACK);
+        tft.drawString(mac_address, 20, 1);
+        tft.setTextColor(TFT_RED, TFT_BLACK);
+        tft.drawString("Waiting to connect....", 20, tft.height() / 2 );
 
     while(!start) {
-      tft.fillScreen(TFT_BLACK);
-      tft.drawString("Waiting to start calibration", 20, tft.height() / 2 );
       // delay(1000);
     }
 
     // calibrate anytime you want to
-    tft.fillScreen(TFT_BLACK);
-    tft.drawString("Accel Gyro calibration - 5sec.",  20, tft.height() / 2 );
+    //tft.drawString("Accel Gyro calibration - 5sec.",  20, tft.height() / 2 );
     Serial.println("Accel Gyro calibration will start in 5sec.");
-    tft.fillScreen(TFT_BLACK);
-    tft.drawString("Leave on the flat plane",  20, tft.height() / 2 );
+        tft.fillScreen(TFT_BLACK);
+         tft.setTextColor(TFT_WHITE, TFT_BLACK);
+        tft.drawString(mac_address, 10, 0 );
+        tft.setTextColor(TFT_ORANGE, TFT_BLACK);
+              tft.drawString("CALIBRATE (1)",  10, tft.height() / 2 );
+
+    tft.drawString("Leave on flat plane",  10, tft.height() );
     Serial.println("Please leave the device still on the flat plane.");
     mpu.verbose(true);
     delay(5000);
     mpu.calibrateAccelGyro();
 
+
     tft.fillScreen(TFT_BLACK);
-    tft.drawString("Mag calibration in 5sec",  20, tft.height() / 2 );
-    Serial.println("Mag calibration will start in 5sec.");
-    tft.fillScreen(TFT_BLACK);
-    tft.drawString("Wave device in eight",  20, tft.height() / 2 );
+     tft.setTextColor(TFT_WHITE, TFT_BLACK);
+        tft.drawString(mac_address, 10, 0);
+        tft.setTextColor(TFT_ORANGE, TFT_BLACK);
+              tft.drawString("CALIBRATE (2)",  10, tft.height() / 2 );
+
+    tft.drawString("Wave in eight pattern",  10, tft.height());
     Serial.println("Please Wave device in a figure eight until done.");
-    delay(5000);
+    delay(2000);
     mpu.calibrateMag();
 
     mpu.verbose(false);
@@ -235,8 +256,8 @@ void loop() {
         mpu.sleep(true);
         Serial.println("Go to Sleep");
         delay(5000);
-        //tft.writecommand(ST7735_SLPIN);
-        //tft.writecommand(ST7735_DISPOFF);
+        tft.writecommand(ST7735_SLPIN);
+        tft.writecommand(ST7735_DISPOFF);
         esp_sleep_enable_ext1_wakeup(GPIO_SEL_33, ESP_EXT1_WAKEUP_ANY_HIGH);
         esp_deep_sleep_start();
 
@@ -251,77 +272,10 @@ void loop() {
   }
 }
 
-// void loop() {
-//   if (digitalRead(TP_PIN_PIN) == HIGH) {
-//       if (!pressed) {
-//         initial = 1;
-//         targetTime = millis() + 1000;
-//         tft.fillScreen(TFT_BLACK);
-//         omm = 99;
-//         func_select = func_select + 1 > 2 ? 0 : func_select + 1;
-//         digitalWrite(LED_PIN, HIGH);
-//         delay(100);
-//         digitalWrite(LED_PIN, LOW);
-//         pressed = true;
-//         pressedTime = millis();
-//       } else {
-//         if (millis() - pressedTime > 3000) {
-//             tft.setTextColor(TFT_GREEN, TFT_BLACK);
-//             tft.setTextDatum(MC_DATUM);
-//             tft.drawString("Press again to wake up",  tft.width() / 2, tft.height() / 2 );
-//             // mpu.setSleepEnabled(true);
-//             mpu.sleep(true);
-//             Serial.println("Go to Sleep");
-//             delay(3000);
-//             tft.writecommand(ST7735_SLPIN);
-//             tft.writecommand(ST7735_DISPOFF);
-//             esp_sleep_enable_ext1_wakeup(GPIO_SEL_33, ESP_EXT1_WAKEUP_ANY_HIGH);
-//             esp_deep_sleep_start();
-//         }
-//       }
-//   } else {
-//     pressed = false;
-//   }
-
-//   switch (func_select) {
-//   case 0: {
-//       // IMU_Show();
-
-//       // String url = String(pacnum) + "," + mpu.getGyroX() + "," + mpu.getGyroY() + "," + mpu.getGyroZ() + "," + mpu.getAccX() + "," + mpu.getAccY() + "," + mpu.getAccZ() + "," + mpu.getMagX() + "," + mpu.getMagY() + "," + mpu.getMagZ() + "," + quat.x + "," + quat.y +  "," + quat.z +  "," + quat.w;
-//       // pacnum++;
-      
-//       // String url = "{\"id\": \"" + mac_address + "\",\"x\":" + quat.x + ",\"y\":" + quat.y + ",\"z\":" + quat.z +  ",\"w\":" + quat.w + "}";
-//       // String url = String(quat.w) + " " + quat.x + " " + quat.y +  " " + quat.z;
-//       // String url = "{\"id\": \"" + mac_address + "\",\"x\":" + quat.x + ",\"y\":" + quat.y + ",\"z\":" + quat.z +  ",\"w\":" + quat.w + "}";
-//       // Serial.println(url);
-
-//       // pCharacteristic->setValue(url.c_str());
-//       // pCharacteristic->notify();
-//   }
-//       break;
-//   case 1: {
-//       tft.setTextColor(TFT_GREEN, TFT_BLACK);
-//       tft.setTextDatum(MC_DATUM);
-//       tft.drawString("Press again to wake up",  tft.width() / 2, tft.height() / 2 );
-//       // mpu.setSleepEnabled(true);
-//       mpu.sleep(true);
-//       Serial.println("Go to Sleep");
-//       delay(3000);
-//       tft.writecommand(ST7735_SLPIN);
-//       tft.writecommand(ST7735_DISPOFF);
-//       esp_sleep_enable_ext1_wakeup(GPIO_SEL_33, ESP_EXT1_WAKEUP_ANY_HIGH);
-//       esp_deep_sleep_start();
-//   }
-//       break;
-//   default:
-//       break;
-//   }
-// }
-
 void IMU_Show() {
   if (mpu.update()) {
     static uint32_t prev_ms = millis();
-    if (millis() > prev_ms + 35) {
+    if (millis() > prev_ms + 1000) {
         print_roll_pitch_yaw();
         prev_ms = millis();
     }
@@ -337,17 +291,18 @@ void IMU_Show() {
 
 void print_roll_pitch_yaw() {    
     //tft.setTextColor(TFT_GREEN, TFT_BLACK);
-    tft.fillScreen(TFT_BLACK);
+    //tft.fillScreen(TFT_BLACK);
     //tft.setTextDatum(TL_DATUM);
     // tft.drawString(mac_address,  0, 0, 0);
-    snprintf(buff, sizeof(buff), "%s", mac_address.c_str());
-    tft.drawString(buff, 0, 0);
-    snprintf(buff, sizeof(buff), "--  w   x   y   z");
-    tft.drawString(buff, 0, 8);
-    snprintf(buff, sizeof(buff), "Q %.2f  %.2f  %.2f  %.2f", quat.w, quat.x, quat.y, quat.z);
-    tft.drawString(buff, 0, 16);
+    //snprintf(buff, sizeof(buff), "%s", mac_address.c_str());
+    //tft.drawString(buff, 0, 0);
+    //snprintf(buff, sizeof(buff), "--  w   x   y   z");
+    //tft.drawString(buff, 0, 8);
+    //snprintf(buff, sizeof(buff), "Q %.2f  %.2f  %.2f  %.2f", quat.w, quat.x, quat.y, quat.z);
+    //tft.drawString(buff, 0, 16);
    // snprintf(buff, sizeof(buff), "E %.2f  %.2f  %.2f", euler.x, euler.y, euler.z);
    // tft.drawString(buff, 0, 32);
+   Serial.println(String(quat.w) + " " + String(quat.x) + " " + String(quat.y) + " " +String(quat.z));
 }
 
 void print_calibration() {
@@ -384,18 +339,18 @@ void print_calibration() {
 
 void TaskBluetooth(void *pvParameters) {
   for (;;) {
-    String url = "{\"id\": \"" + mac_address + "\",\"x\":" + quat.x + ",\"y\":" + quat.y + ",\"z\":" + quat.z +  ",\"w\":" + quat.w + "}";
-    Serial.println(url);
+    String url =  mac_address + " " + quat.x + " " + quat.y + " " + quat.z +  " " + quat.w;
+    //Serial.println(url);
 
     pCharacteristic->setValue(url.c_str());
     pCharacteristic->notify();
-    vTaskDelay(1);  // one tick delay (15ms) in between reads for stability
+    //vTaskDelay(1);  // one tick delay (15ms) in between reads for stability
   }
 }
 
 void TaskReadMPU(void *pvParameters) {
     for (;;) {
     IMU_Show();
-    vTaskDelay(1);  // one tick delay (15ms) in between reads for stability
+    //vTaskDelay(1);  // one tick delay (15ms) in between reads for stability
   }
 }
