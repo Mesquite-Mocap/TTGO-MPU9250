@@ -314,9 +314,9 @@ void setup() {
         
         tft.fillScreen(TFT_BLACK);
          tft.setTextColor(TFT_WHITE, TFT_BLACK);
-        tft.drawString(mac_address, 0, 10);
+        tft.drawString(mac_address, 10, 10);
         tft.setTextColor(TFT_RED, TFT_BLACK);
-        tft.drawString("Ready to Connect....", 20, tft.height() / 2 );
+        tft.drawString("Ready to Connect....", 0, tft.height() / 2 );
 
     while(!start) {
       Serial.print(".");
@@ -330,9 +330,9 @@ void setup() {
          tft.setTextColor(TFT_WHITE, TFT_BLACK);
         tft.drawString(mac_address, 10, 0 );
         tft.setTextColor(TFT_ORANGE, TFT_BLACK);
-              tft.drawString("CALIBRATE (1)",  10, tft.height() / 2 );
+              tft.drawString("CALIBRATE (1)",  10, tft.height() / 2.5 );
 
-    tft.drawString("Leave on flat plane",  10, tft.height() );
+    tft.drawString("Leave still..",  10, tft.height()/1.5 );
     Serial.println("Please leave the device still on the flat plane.");
     mpu.verbose(true);
     delay(5000);
@@ -343,14 +343,22 @@ void setup() {
      tft.setTextColor(TFT_WHITE, TFT_BLACK);
         tft.drawString(mac_address, 10, 0);
         tft.setTextColor(TFT_ORANGE, TFT_BLACK);
-              tft.drawString("CALIBRATE (2)",  10, tft.height() / 2 );
+              tft.drawString("CALIBRATE (2)",  10, tft.height() / 2.5 );
 
-    tft.drawString("Wave in eight pattern",  10, tft.height());
+    tft.drawString("Wave in eight pattern",  10, tft.height()/1.5);
     Serial.println("Please Wave device in a figure eight until done.");
     delay(2000);
     mpu.calibrateMag();
 
     mpu.verbose(false);
+
+
+   tft.fillScreen(TFT_BLACK);
+     tft.setTextColor(TFT_WHITE, TFT_BLACK);
+        tft.drawString(mac_address, 10, 0);
+        tft.setTextColor(TFT_GREEN, TFT_BLACK);
+              tft.drawString("Transmitting Data",  10, tft.height() / 2.5 );
+
 
     pinMode(TP_PIN_PIN, INPUT);
     //! Must be set to pull-up output mode in order to wake up in deep sleep mode
