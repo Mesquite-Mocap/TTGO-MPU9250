@@ -1,5 +1,7 @@
-#include "MPU9250.h"
+#include <MPU9250.h>
+#include "esp_adc_cal.h"
 #include "ttgo.h"
+#include "charge.h"
 #include <TFT_eSPI.h>
 #include <pcf8563.h>
 #include <BLEDevice.h>
@@ -9,22 +11,22 @@
 #include "esp_bt_device.h"
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
-
+#include "Free_Fonts.h" 
 
 #include <WiFiManager.h>         //https://github.com/tzapu/WiFiManager
 
-// #define FACTORY_HW_TEST     //! Test RTC and WiFi scan when enabled
- #define ARDUINO_OTA_UPDATE      //! Enable this line OTA update
 
 
-#ifdef ARDUINO_OTA_UPDATE
 #include <ESPmDNS.h>
 #include <WiFiUdp.h>
 #include <ArduinoOTA.h>
-#endif
+#include <EEPROM.h>
+
+// define the number of bytes you want to access
+#define EEPROM_SIZE 1
 
 
-
+bool otaMode = false;
 
 int writeCount = 0;
 
@@ -97,6 +99,127 @@ BLEUUID  SERVICE_UUID("6E400001-B5A3-F393-E0A9-E50E24DCCA9E"); // UART service U
 BLEUUID CHARACTERISTIC_UUID ("6E400002-B5A3-F393-E0A9-E50E24DCCA9E");
 BLEAdvertising *pAdvertising;
 
+
+
+void setupWiFi()
+{
+#ifdef ARDUINO_OTA_UPDATE
+    WiFiManager wifiManager;
+    //set callback that gets called when connecting to previous WiFi fails, and enters Access Point mode
+    wifiManager.setAPCallback(configModeCallback);
+    wifiManager.setBreakAfterConfig(true);          // Without this saveConfigCallback does not get fired
+    wifiManager.autoConnect(String("MM-" + mac_address).c_str());
+#endif
+}
+
+void configModeCallback (WiFiManager *myWiFiManager)
+{
+    Serial.println("Entered config mode");
+    Serial.println(WiFi.softAPIP());
+    //if you used auto generated SSID, print it
+    Serial.println(myWiFiManager->getConfigPortalSSID());
+
+    tft.fillScreen(TFT_BLACK);
+    tft.setTextColor(TFT_WHITE);
+    tft.drawString("Connect hotspot name ",  20, tft.height() / 2 - 20);
+    tft.drawString("configure wrist",  35, tft.height() / 2  + 20);
+    tft.setTextColor(TFT_GREEN);
+    tft.drawString("\"T-Wristband\"",  40, tft.height() / 2 );
+
+}
+
+void drawProgressBar(uint16_t x0, uint16_t y0, uint16_t w, uint16_t h, uint8_t percentage, uint16_t frameColor, uint16_t barColor)
+{
+    if (percentage == 0) {
+        tft.fillRoundRect(x0, y0, w, h, 3, TFT_BLACK);
+    }
+    uint8_t margin = 2;
+    uint16_t barHeight = h - 2 * margin;
+    uint16_t barWidth = w - 2 * margin;
+    tft.drawRoundRect(x0, y0, w, h, 3, frameColor);
+    tft.fillRect(x0 + margin, y0 + margin, barWidth * percentage / 100.0, barHeight, barColor);
+}
+
+void setupOTA()
+{
+    // Port defaults to 3232
+    // ArduinoOTA.setPort(3232);
+
+    // Hostname defaults to esp3232-[MAC]
+    ArduinoOTA.setHostname("T-Wristband");
+
+    // No authentication by default
+    // ArduinoOTA.setPassword("admin");
+
+    // Password can be set with it's md5 value as well
+    // MD5(admin) = 21232f297a57a5a743894a0e4a801fc3
+    // ArduinoOTA.setPasswordHash("21232f297a57a5a743894a0e4a801fc3");
+
+    ArduinoOTA.onStart([]() {
+        String type;
+        if (ArduinoOTA.getCommand() == U_FLASH)
+            type = "sketch";
+        else // U_SPIFFS
+            type = "filesystem";
+
+        // NOTE: if updating SPIFFS this would be the place to unmount SPIFFS using SPIFFS.end()
+        Serial.println("Start updating " + type);
+        otaStart = true;
+        tft.fillScreen(TFT_BLACK);
+        tft.drawString("Updating...", tft.width() / 2 - 20, 55 );
+    })
+    .onEnd([]() {
+        Serial.println("\nEnd");
+        delay(500);
+    })
+    .onProgress([](unsigned int progress, unsigned int total) {
+        // Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
+        int percentage = (progress / (total / 100));
+        tft.setTextDatum(TC_DATUM);
+        tft.setTextPadding(tft.textWidth(" 888% "));
+        tft.drawString(String(percentage) + "%", 145, 35);
+        drawProgressBar(10, 30, 120, 15, percentage, TFT_WHITE, TFT_BLUE);
+    })
+    .onError([](ota_error_t error) {
+        Serial.printf("Error[%u]: ", error);
+        if (error == OTA_AUTH_ERROR) Serial.println("Auth Failed");
+        else if (error == OTA_BEGIN_ERROR) Serial.println("Begin Failed");
+        else if (error == OTA_CONNECT_ERROR) Serial.println("Connect Failed");
+        else if (error == OTA_RECEIVE_ERROR) Serial.println("Receive Failed");
+        else if (error == OTA_END_ERROR) Serial.println("End Failed");
+
+        tft.fillScreen(TFT_BLACK);
+        tft.drawString("Update Failed", tft.width() / 2 - 20, 55 );
+        delay(3000);
+        otaStart = false;
+        initial = 1;
+        targetTime = millis() + 1000;
+        tft.fillScreen(TFT_BLACK);
+        tft.setTextDatum(TL_DATUM);
+        omm = 99;
+    });
+
+    ArduinoOTA.begin();
+}
+
+
+void setupADC()
+{
+    esp_adc_cal_characteristics_t adc_chars;
+    esp_adc_cal_value_t val_type = esp_adc_cal_characterize((adc_unit_t)ADC_UNIT_1, (adc_atten_t)ADC1_CHANNEL_6, (adc_bits_width_t)ADC_WIDTH_BIT_12, 1100, &adc_chars);
+    //Check type of calibration value used to characterize ADC
+    if (val_type == ESP_ADC_CAL_VAL_EFUSE_VREF) {
+        Serial.printf("eFuse Vref:%u mV", adc_chars.vref);
+        vref = adc_chars.vref;
+    } else if (val_type == ESP_ADC_CAL_VAL_EFUSE_TP) {
+        Serial.printf("Two Point --> coeff_a:%umV coeff_b:%umV\n", adc_chars.coeff_a, adc_chars.coeff_b);
+    } else {
+        Serial.println("Default Vref: 1100mV");
+    }
+}
+
+
+
 class MyCallbacks: public BLECharacteristicCallbacks {
   void onWrite(BLECharacteristic *pChar) {
     std::string value = pChar->getValue();
@@ -126,19 +249,12 @@ class ServerCallbacks : public BLEServerCallbacks {
 void setup() {
     Serial.begin(115200);
 
-    // Serial.println("");
-    // Serial.print("Connected to ");
-    // Serial.println(ssid);
-    // Serial.print("IP address: ");
-    // Serial.println(WiFi.localIP());
-
-    // Serial.println(mac_address);
-    // mac_address = WiFi.macAddress();
 
     tft.init();
     tft.setRotation(1);
     tft.setSwapBytes(true);
     tft.pushImage(0, 0,  160, 80, ttgo);
+      tft.setFreeFont(FSB9); 
 
     BLEDevice::init(BLE_NAME);
     BLEServer *pServer = BLEDevice::createServer();
@@ -171,6 +287,21 @@ void setup() {
     Wire.setClock(400000);
     delay(2000);
 
+       // setupADC();
+
+   // setupWiFi();
+
+ //   setupOTA();
+
+      pinMode(TP_PIN_PIN, INPUT);
+    //! Must be set to pull-up output mode in order to wake up in deep sleep mode
+    pinMode(TP_PWR_PIN, PULLUP);
+    digitalWrite(TP_PWR_PIN, HIGH);
+
+    pinMode(LED_PIN, OUTPUT);
+
+
+
     if (!mpu.setup(0x69)) {  // change to your own address
         while (1) {
             Serial.println("MPU connection failed. Please check your connection with `connection_check` example.");
@@ -180,13 +311,15 @@ void setup() {
 
 
 
+        
         tft.fillScreen(TFT_BLACK);
          tft.setTextColor(TFT_WHITE, TFT_BLACK);
-        tft.drawString(mac_address, 20, 1);
+        tft.drawString(mac_address, 0, 10);
         tft.setTextColor(TFT_RED, TFT_BLACK);
-        tft.drawString("Waiting to connect....", 20, tft.height() / 2 );
+        tft.drawString("Ready to Connect....", 20, tft.height() / 2 );
 
     while(!start) {
+      Serial.print(".");
       // delay(1000);
     }
 
@@ -256,6 +389,16 @@ void setup() {
 }
 
 void loop() {
+
+if(otaMode){
+    ArduinoOTA.handle();
+}
+
+    //! If OTA starts, skip the following operation
+    if (otaStart){
+        return;
+    }
+
   if (digitalRead(TP_PIN_PIN) == HIGH) {
     if (!pressed) {
       pressed = true;
@@ -360,13 +503,13 @@ void TaskBluetooth(void *pvParameters) {
 
     pCharacteristic->setValue(url.c_str());
     pCharacteristic->notify();
-    //vTaskDelay(1);  // one tick delay (15ms) in between reads for stability
+    vTaskDelay(1);  // one tick delay (15ms) in between reads for stability
   }
 }
 
 void TaskReadMPU(void *pvParameters) {
     for (;;) {
     IMU_Show();
-    //vTaskDelay(1);  // one tick delay (15ms) in between reads for stability
+    vTaskDelay(1);  // one tick delay (15ms) in between reads for stability
   }
 }
