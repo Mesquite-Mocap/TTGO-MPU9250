@@ -10,6 +10,21 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 
+
+#include <WiFiManager.h>         //https://github.com/tzapu/WiFiManager
+
+// #define FACTORY_HW_TEST     //! Test RTC and WiFi scan when enabled
+ #define ARDUINO_OTA_UPDATE      //! Enable this line OTA update
+
+
+#ifdef ARDUINO_OTA_UPDATE
+#include <ESPmDNS.h>
+#include <WiFiUdp.h>
+#include <ArduinoOTA.h>
+#endif
+
+
+
 int writeCount = 0;
 
 MPU9250 mpu;
