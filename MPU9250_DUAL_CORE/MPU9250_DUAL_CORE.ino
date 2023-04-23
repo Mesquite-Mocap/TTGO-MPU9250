@@ -102,13 +102,13 @@ BLEAdvertising *pAdvertising;
 
 
 void setupWiFi() {
-#ifdef ARDUINO_OTA_UPDATE
   WiFiManager wifiManager;
   //set callback that gets called when connecting to previous WiFi fails, and enters Access Point mode
   wifiManager.setAPCallback(configModeCallback);
   wifiManager.setBreakAfterConfig(true);  // Without this saveConfigCallback does not get fired
+  mac_address = WiFi.macAddress();
+  Serial.println(mac_address);
   wifiManager.autoConnect(String("MM-" + mac_address).c_str());
-#endif
 }
 
 void configModeCallback(WiFiManager *myWiFiManager) {
@@ -119,10 +119,10 @@ void configModeCallback(WiFiManager *myWiFiManager) {
 
   tft.fillScreen(TFT_BLACK);
   tft.setTextColor(TFT_WHITE);
-  tft.drawString("Connect hotspot name ", 20, tft.height() / 2 - 20);
+  tft.drawString("Connect to hotspot: ", 0, tft.height() / 2 - 20);
   tft.drawString("configure wrist", 35, tft.height() / 2 + 20);
   tft.setTextColor(TFT_GREEN);
-  tft.drawString("\"T-Wristband\"", 40, tft.height() / 2);
+  tft.drawString("\"" + mac_address + "\"", 10, tft.height() / 2);
 }
 
 void drawProgressBar(uint16_t x0, uint16_t y0, uint16_t w, uint16_t h, uint8_t percentage, uint16_t frameColor, uint16_t barColor) {
@@ -141,7 +141,7 @@ void setupOTA() {
   // ArduinoOTA.setPort(3232);
 
   // Hostname defaults to esp3232-[MAC]
-  ArduinoOTA.setHostname("T-Wristband");
+  ArduinoOTA.setHostname(mac_address.c_str());
 
   // No authentication by default
   // ArduinoOTA.setPassword("admin");
@@ -212,7 +212,7 @@ void setupADC() {
   }
 }
 
-
+String Bone = "Not assigned";
 
 class MyCallbacks : public BLECharacteristicCallbacks {
   void onWrite(BLECharacteristic *pChar) {
@@ -220,13 +220,20 @@ class MyCallbacks : public BLECharacteristicCallbacks {
     Serial.print("Received Value: ");
     Serial.println(value.c_str());
 
-
-    tft.fillScreen(TFT_BLACK);
-    tft.setTextColor(TFT_WHITE, TFT_BLACK);
-    tft.drawString(mac_address, 20, 1);
-    tft.setTextColor(TFT_RED, TFT_BLACK);
-    tft.drawString("CONNECTED", 20, tft.height() / 2);
-    start = true;
+    if (value == "calibrate") {
+      tft.fillScreen(TFT_BLACK);
+      tft.setTextColor(TFT_WHITE, TFT_BLACK);
+      tft.drawString(mac_address, 20, 1);
+      tft.setTextColor(TFT_RED, TFT_BLACK);
+      tft.drawString("CONNECTED", 20, tft.height() / 2);
+      start = true;
+    }
+    else if(value == "ota"){
+      EEPROM.write(0,1);
+      EEPROM.commit();
+      delay(2000);
+      ESP.restart();
+    }
   }
 };
 
@@ -240,6 +247,9 @@ class ServerCallbacks : public BLEServerCallbacks {
 
 void setup() {
   Serial.begin(115200);
+    EEPROM.begin(EEPROM_SIZE);
+
+
 
 
   tft.init();
@@ -247,6 +257,30 @@ void setup() {
   tft.setSwapBytes(true);
   tft.pushImage(0, 0, 160, 80, ttgo);
   tft.setFreeFont(FSB9);
+
+
+
+  pinMode(TP_PIN_PIN, INPUT);
+  //! Must be set to pull-up output mode in order to wake up in deep sleep mode
+  pinMode(TP_PWR_PIN, PULLUP);
+  digitalWrite(TP_PWR_PIN, HIGH);
+
+  pinMode(LED_PIN, OUTPUT);
+
+
+
+  int otaState = EEPROM.read(0);
+  Serial.println(otaState);
+
+  if (otaState == 1) {
+    EEPROM.write(0, 0);
+    EEPROM.commit();
+    otaMode = true;
+    otaStart = true;
+    setupWiFi();
+    setupOTA();
+    return;
+  }
 
   BLEDevice::init(BLE_NAME);
   BLEServer *pServer = BLEDevice::createServer();
@@ -278,16 +312,8 @@ void setup() {
 
   setupADC();
 
-  // setupWiFi();
 
-  //   setupOTA();
 
-  pinMode(TP_PIN_PIN, INPUT);
-  //! Must be set to pull-up output mode in order to wake up in deep sleep mode
-  pinMode(TP_PWR_PIN, PULLUP);
-  digitalWrite(TP_PWR_PIN, HIGH);
-
-  pinMode(LED_PIN, OUTPUT);
 
 
 
@@ -419,6 +445,8 @@ bool displayOn = true;
 bool lastTouch = false;
 
 void loop() {
+  Serial.println(pressed);
+  Serial.println(millis());
   if (digitalRead(TP_PIN_PIN) == HIGH) {
     lastTouch = true;
     if (!pressed) {
