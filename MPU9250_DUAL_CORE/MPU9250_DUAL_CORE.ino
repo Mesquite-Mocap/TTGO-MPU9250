@@ -320,6 +320,36 @@ void setup() {
 
     while(!start) {
       Serial.print(".");
+        if (digitalRead(TP_PIN_PIN) == HIGH) {
+    if (!pressed) {
+      pressed = true;
+      pressedTime = millis();
+    }
+
+    if (millis() - pressedTime > 2000) {
+      if (digitalRead(TP_PIN_PIN) == HIGH) {
+        tft.fillScreen(TFT_BLACK);
+        tft.setTextColor(TFT_GREEN, TFT_BLACK);
+        tft.setTextDatum(MC_DATUM);
+        tft.drawString("Turning off....",  tft.width() / 2, tft.height() / 2 );
+        // mpu.setSleepEnabled(true);
+        mpu.sleep(true);
+        Serial.println("Go to Sleep");
+        delay(5000);
+        tft.writecommand(ST7735_SLPIN);
+        tft.writecommand(ST7735_DISPOFF);
+        esp_sleep_enable_ext1_wakeup(GPIO_SEL_33, ESP_EXT1_WAKEUP_ANY_HIGH);
+        esp_deep_sleep_start();
+
+      } else {
+        tft.setTextColor(TFT_GREEN, TFT_BLACK);
+        tft.setTextDatum(MC_DATUM);
+        tft.drawString("Hold for 2 seconds",  tft.width() / 2, tft.height() / 2 );
+      }
+    }
+  } else {
+    pressed = false;
+  }
       // delay(1000);
     }
 
@@ -342,10 +372,10 @@ void setup() {
     tft.fillScreen(TFT_BLACK);
      tft.setTextColor(TFT_WHITE, TFT_BLACK);
         tft.drawString(mac_address, 10, 0);
-        tft.setTextColor(TFT_ORANGE, TFT_BLACK);
+        tft.setTextColor(TFT_YELLOW, TFT_BLACK);
               tft.drawString("CALIBRATE (2)",  10, tft.height() / 2.5 );
 
-    tft.drawString("Wave in eight pattern",  10, tft.height()/1.5);
+    tft.drawString("Wave in 8 pattern",  10, tft.height()/1.5);
     Serial.println("Please Wave device in a figure eight until done.");
     delay(2000);
     mpu.calibrateMag();
@@ -396,29 +426,23 @@ void setup() {
     ,  1);
 }
 
+bool displayOn = true;
+bool lastTouch = false;
+
 void loop() {
-
-if(otaMode){
-    ArduinoOTA.handle();
-}
-
-    //! If OTA starts, skip the following operation
-    if (otaStart){
-        return;
-    }
-
   if (digitalRead(TP_PIN_PIN) == HIGH) {
+    lastTouch = true;
     if (!pressed) {
       pressed = true;
       pressedTime = millis();
     }
 
-    if (millis() - pressedTime > 2000) {
+    if (millis() - pressedTime > 4000) {
       if (digitalRead(TP_PIN_PIN) == HIGH) {
         tft.fillScreen(TFT_BLACK);
         tft.setTextColor(TFT_GREEN, TFT_BLACK);
         tft.setTextDatum(MC_DATUM);
-        tft.drawString("Press again to wake up",  tft.width() / 2, tft.height() / 2 );
+        tft.drawString("Turning off...",  tft.width() / 2, tft.height() / 2 );
         // mpu.setSleepEnabled(true);
         mpu.sleep(true);
         Serial.println("Go to Sleep");
@@ -435,8 +459,34 @@ if(otaMode){
       }
     }
   } else {
-    pressed = false;
+    if(lastTouch){
+              tft.writecommand(ST7735_SLPIN);
+
+    if(displayOn){
+                  tft.writecommand(ST7735_DISPOFF);
+                  displayOn = false;
+
+    }
+    else{
+
+                      tft.writecommand(ST7735_DISPON);
+                      displayOn = true;
+
+    }
   }
+    pressed = false;
+    lastTouch = false;
+  }
+
+  if(otaMode){
+    ArduinoOTA.handle();
+}
+
+    //! If OTA starts, skip the following operation
+    if (otaStart){
+        return;
+    }
+
 }
 
 void IMU_Show() {
