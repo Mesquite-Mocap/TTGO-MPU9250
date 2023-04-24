@@ -26,6 +26,14 @@
 #define EEPROM_SIZE 1
 
 
+unsigned long lastTime = 0;
+// Timer set to 10 minutes (600000)
+//unsigned long timerDelay = 600000;
+// Set timer to 5 seconds (5000)
+unsigned long timerDelay = 1000 * 60 * 2;
+
+String batt_level = "";
+
 bool otaMode = false;
 
 int writeCount = 0;
@@ -198,6 +206,12 @@ void setupOTA() {
 }
 
 
+String getVoltage() {
+  uint16_t v = analogRead(BATT_ADC_PIN);
+  float battery_voltage = ((float)v / 4095.0) * 2.0 * 3.3 * (vref / 1000.0);
+  return String(battery_voltage) + "V";
+}
+
 void setupADC() {
   esp_adc_cal_characteristics_t adc_chars;
   esp_adc_cal_value_t val_type = esp_adc_cal_characterize((adc_unit_t)ADC_UNIT_1, (adc_atten_t)ADC1_CHANNEL_6, (adc_bits_width_t)ADC_WIDTH_BIT_12, 1100, &adc_chars);
@@ -212,7 +226,7 @@ void setupADC() {
   }
 }
 
-String Bone = "Not assigned";
+String Bone = "N/A";
 
 class MyCallbacks : public BLECharacteristicCallbacks {
   void onWrite(BLECharacteristic *pChar) {
@@ -227,9 +241,8 @@ class MyCallbacks : public BLECharacteristicCallbacks {
       tft.setTextColor(TFT_RED, TFT_BLACK);
       tft.drawString("CONNECTED", 20, tft.height() / 2);
       start = true;
-    }
-    else if(value == "ota"){
-      EEPROM.write(0,1);
+    } else if (value == "ota") {
+      EEPROM.write(0, 1);
       EEPROM.commit();
       delay(2000);
       ESP.restart();
@@ -247,7 +260,7 @@ class ServerCallbacks : public BLEServerCallbacks {
 
 void setup() {
   Serial.begin(115200);
-    EEPROM.begin(EEPROM_SIZE);
+  EEPROM.begin(EEPROM_SIZE);
 
 
 
@@ -403,6 +416,8 @@ void setup() {
   tft.drawString(mac_address, 10, 0);
   tft.setTextColor(TFT_GREEN, TFT_BLACK);
   tft.drawString("Transmitting Data", 10, tft.height() / 2.5);
+  tft.setTextColor(TFT_BLUE, TFT_BLACK);
+  tft.drawString(Bone + batt_level, 10, tft.height() / 3);
 
 
   pinMode(TP_PIN_PIN, INPUT);
@@ -444,7 +459,12 @@ void setup() {
 bool displayOn = true;
 bool lastTouch = false;
 
+
 void loop() {
+  if ((millis() - lastTime) > timerDelay) {
+    batt_level = " ," + getVoltage();
+    lastTime = millis();
+  }
   Serial.println(pressed);
   Serial.println(millis());
   if (digitalRead(TP_PIN_PIN) == HIGH) {
