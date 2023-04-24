@@ -181,7 +181,7 @@ void setupOTA() {
       tft.setTextDatum(TC_DATUM);
       tft.setTextPadding(tft.textWidth(" 888% "));
       tft.drawString(String(percentage) + "%", 145, 35);
-      drawProgressBar(10, 30, 120, 15, percentage, TFT_WHITE, TFT_BLUE);
+      drawProgressBar(10, 30, 120, 15, percentage, TFT_WHITE, TFT_ORANGE);
     })
     .onError([](ota_error_t error) {
       Serial.printf("Error[%u]: ", error);
@@ -387,7 +387,7 @@ void setup() {
   tft.fillScreen(TFT_BLACK);
   tft.setTextColor(TFT_WHITE, TFT_BLACK);
   tft.drawString(mac_address, 10, 0);
-  tft.setTextColor(TFT_BLUE, TFT_BLACK);
+  tft.setTextColor(TFT_ORANGE, TFT_BLACK);
   tft.drawString("CALIBRATE (1)", 10, tft.height() / 2.5);
 
   tft.drawString("Leave still..", 10, tft.height() / 1.5);
@@ -410,7 +410,7 @@ void setup() {
 
   mpu.verbose(false);
 
-  batt_level = " ," + getVoltage();
+  batt_level = ", " + getVoltage();
 
 
   tft.fillScreen(TFT_BLACK);
@@ -464,7 +464,7 @@ bool lastTouch = false;
 
 void loop() {
   if ((millis() - lastTime) > timerDelay) {
-    batt_level = " ," + getVoltage();
+    batt_level = ", " + getVoltage();
     lastTime = millis();
   }
   Serial.println(pressed);
@@ -509,7 +509,7 @@ void loop() {
       } else {
         digitalWrite(TFT_BL, HIGH);
         tft.writecommand(ST7735_DISPON);
-        batt_level = " ," + getVoltage();
+        batt_level = ", " + getVoltage();
         displayOn = true;
       }
     }
