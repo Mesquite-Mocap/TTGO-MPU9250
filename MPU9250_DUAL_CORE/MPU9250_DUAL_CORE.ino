@@ -387,7 +387,7 @@ void setup() {
   tft.fillScreen(TFT_BLACK);
   tft.setTextColor(TFT_WHITE, TFT_BLACK);
   tft.drawString(mac_address, 10, 0);
-  tft.setTextColor(TFT_ORANGE, TFT_BLACK);
+  tft.setTextColor(TFT_BLUE, TFT_BLACK);
   tft.drawString("CALIBRATE (1)", 10, tft.height() / 2.5);
 
   tft.drawString("Leave still..", 10, tft.height() / 1.5);
@@ -410,6 +410,8 @@ void setup() {
 
   mpu.verbose(false);
 
+  batt_level = " ," + getVoltage();
+
 
   tft.fillScreen(TFT_BLACK);
   tft.setTextColor(TFT_WHITE, TFT_BLACK);
@@ -417,7 +419,7 @@ void setup() {
   tft.setTextColor(TFT_GREEN, TFT_BLACK);
   tft.drawString("Transmitting Data", 10, tft.height() / 2.5);
   tft.setTextColor(TFT_BLUE, TFT_BLACK);
-  tft.drawString(Bone + batt_level, 10, tft.height() / 3);
+  tft.drawString(Bone + batt_level, 10, tft.height() / 1.5);
 
 
   pinMode(TP_PIN_PIN, INPUT);
@@ -507,6 +509,7 @@ void loop() {
       } else {
         digitalWrite(TFT_BL, HIGH);
         tft.writecommand(ST7735_DISPON);
+        batt_level = " ," + getVoltage();
         displayOn = true;
       }
     }
