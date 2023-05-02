@@ -666,12 +666,18 @@ void print_calibration() {
 
 void TaskBluetooth(void *pvParameters) {
   for (;;) {
-    String url = mac_address + " " + quat.x + " " + quat.y + " " + quat.z + " " + quat.w;
-    //Serial.println(url);
 
-    pCharacteristic->setValue(url.c_str());
-    pCharacteristic->notify();
-    vTaskDelay(1);  // one tick delay (15ms) in between reads for stability
+    static uint32_t prev_ms_ble = millis();
+    if (millis() > prev_ms_ble + 1000/30) {
+      prev_ms_ble = millis();
+      String url = mac_address + " " + quat.x + " " + quat.y + " " + quat.z + " " + quat.w;
+      pCharacteristic->setValue(url.c_str());
+      pCharacteristic->notify();
+      vTaskDelay(1);  // one tick delay (15ms) in between reads for stability
+    }
+
+
+
   }
 }
 
