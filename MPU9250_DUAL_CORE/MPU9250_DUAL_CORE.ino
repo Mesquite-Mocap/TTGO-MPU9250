@@ -240,52 +240,51 @@ class MyCallbacks : public BLECharacteristicCallbacks {
 
 
     if (value == "start") {
-      tft.fillScreen(TFT_BLACK);
-      tft.setTextColor(TFT_WHITE, TFT_BLACK);
-      tft.setTextDatum(MC_DATUM);
-      tft.drawString(mac_address, tft.width() / 2, 10);
-      tft.setTextColor(TFT_GREEN, TFT_BLACK);
-      tft.drawString("CONNECTED", tft.width() / 2, tft.height() / 2);
-      tft.setTextColor(TFT_ORANGE, TFT_BLACK);
-      tft.drawString("Calibrate now", tft.width() / 2, tft.height() - 20);
-
+      if (!start) {
+        tft.fillScreen(TFT_BLACK);
+        tft.setTextColor(TFT_WHITE, TFT_BLACK);
+        tft.setTextDatum(MC_DATUM);
+        tft.drawString(mac_address, tft.width() / 2, 10);
+        tft.setTextColor(TFT_GREEN, TFT_BLACK);
+        tft.drawString("CONNECTED", tft.width() / 2, tft.height() / 2);
+        tft.setTextColor(TFT_ORANGE, TFT_BLACK);
+        tft.drawString("Calibrate now", tft.width() / 2, tft.height() - 20);
+      }
     } else if (value == "calibrate") {
       start = true;
-    }
-    else if(value == "dispoff"){
-      if(calibrated){
-              digitalWrite(TFT_BL, LOW);
+    } else if (value == "dispoff") {
+      if (calibrated) {
+        digitalWrite(TFT_BL, LOW);
         tft.writecommand(ST7735_DISPOFF);
         displayOn = false;
       }
 
-    } 
-        else if(value == "poweroff"){
-                tft.fillScreen(TFT_BLACK);
-          tft.setTextColor(TFT_RED, TFT_BLACK);
-          tft.setTextDatum(MC_DATUM);
-          tft.drawString("POWER OFF", tft.width() / 2, tft.height() / 2);
-          // mpu.setSleepEnabled(true);
-          mpu.sleep(true);
-          Serial.println("Go to Sleep");
-          delay(3000);
-          tft.writecommand(ST7735_SLPIN);
-          tft.writecommand(ST7735_DISPOFF);
-          esp_sleep_enable_ext1_wakeup(GPIO_SEL_33, ESP_EXT1_WAKEUP_ANY_HIGH);
-          esp_deep_sleep_start();
-    } 
+    } else if (value == "poweroff") {
+      tft.fillScreen(TFT_BLACK);
+      tft.setTextColor(TFT_RED, TFT_BLACK);
+      tft.setTextDatum(MC_DATUM);
+      tft.drawString("POWER OFF", tft.width() / 2, tft.height() / 2);
+      // mpu.setSleepEnabled(true);
+      mpu.sleep(true);
+      Serial.println("Go to Sleep");
+      delay(3000);
+      tft.writecommand(ST7735_SLPIN);
+      tft.writecommand(ST7735_DISPOFF);
+      esp_sleep_enable_ext1_wakeup(GPIO_SEL_33, ESP_EXT1_WAKEUP_ANY_HIGH);
+      esp_deep_sleep_start();
+    }
 
-    else if(value == "restart"){
-          tft.fillScreen(TFT_BLACK);
-          tft.setTextColor(TFT_RED, TFT_BLACK);
-          tft.setTextDatum(MC_DATUM);
-          tft.drawString("POWER OFF", tft.width() / 2, tft.height() / 2);
-                    delay(3000);
-            ESP.restart();
-    } 
-    
+    else if (value == "restart") {
+      tft.fillScreen(TFT_BLACK);
+      tft.setTextColor(TFT_RED, TFT_BLACK);
+      tft.setTextDatum(MC_DATUM);
+      tft.drawString("POWER OFF", tft.width() / 2, tft.height() / 2);
+      delay(3000);
+      ESP.restart();
+    }
+
     else if (value == "ota") {
-          tft.fillScreen(TFT_BLACK);
+      tft.fillScreen(TFT_BLACK);
       tft.setTextColor(TFT_GREEN, TFT_BLACK);
       tft.setTextDatum(MC_DATUM);
       tft.drawString("Rebooting", tft.width() / 2, 30);
@@ -668,16 +667,13 @@ void TaskBluetooth(void *pvParameters) {
   for (;;) {
 
     static uint32_t prev_ms_ble = millis();
-    if (millis() > prev_ms_ble + 1000/30) {
+    if (millis() > prev_ms_ble + 1000 / 30) {
       prev_ms_ble = millis();
       String url = mac_address + " " + quat.x + " " + quat.y + " " + quat.z + " " + quat.w;
       pCharacteristic->setValue(url.c_str());
       pCharacteristic->notify();
       vTaskDelay(1);  // one tick delay (15ms) in between reads for stability
     }
-
-
-
   }
 }
 
