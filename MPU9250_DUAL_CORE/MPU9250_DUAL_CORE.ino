@@ -667,7 +667,7 @@ void TaskBluetooth(void *pvParameters) {
   for (;;) {
 
     static uint32_t prev_ms_ble = millis();
-    if (millis() > prev_ms_ble + 1000 / 30) {
+    if (millis() > prev_ms_ble + 1000 / 40) {
       prev_ms_ble = millis();
       String url = mac_address + " " + quat.x + " " + quat.y + " " + quat.z + " " + quat.w;
       pCharacteristic->setValue(url.c_str());
@@ -680,6 +680,6 @@ void TaskBluetooth(void *pvParameters) {
 void TaskReadMPU(void *pvParameters) {
   for (;;) {
     IMU_Show();
-    vTaskDelay(1);  // one tick delay (15ms) in between reads for stability
+    //vTaskDelay(1);  // one tick delay (15ms) in between reads for stability
   }
 }
